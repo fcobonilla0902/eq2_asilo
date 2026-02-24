@@ -1,0 +1,15 @@
+# Base de datos local (no subir al repo)
+*.db
+*.sqlite
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Archivos temporales
+*.log
+assets/temp/
