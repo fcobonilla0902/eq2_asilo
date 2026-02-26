@@ -29,6 +29,8 @@ asilo/
 │   └── components/       # Componentes reutilizables ← P5, P6
 ├── reports/
 │   └── generador.py      # Reportes PDF ← P7
+└── uploads/
+|    └── residente_id/    # documentos de registro de cada residente
 └── utils/
     └── helpers.py        # Funciones auxiliares
 ```
