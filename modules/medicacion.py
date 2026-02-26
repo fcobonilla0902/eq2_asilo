@@ -1,5 +1,4 @@
 """Módulo de medicación — Responsable: P2"""
-# TODO Sprint 2 - P2
 """
 Módulo de medicación — lógica de negocio (CRUD completo junto con los modulos de alertas calculadas y el historial programado).
 Basado estrictamente en el diagrama de BD del equipo (tabla: medicaciones).
@@ -12,10 +11,17 @@ Funciones públicas:
     buscar_medicaciones(texto: str) -> list
     actualizar_medicacion(id_medicacion: int, datos: dict) -> bool
     eliminar_medicacion(id_medicacion: int) -> bool
+    marcar_administrada(id_medicacion: int) -> bool
+    desmarcar_administrada(id_medicacion: int) -> bool
 
     obtener_historial_residente(id_residente: int) -> list
     obtener_alertas_medicacion(fecha_actual: str, hora_actual: str) -> list
     obtener_alertas_omisiones(fecha_actual: str) -> list
+
+NOTA: requiere que la tabla medicaciones tenga la columna:
+    administrada INTEGER DEFAULT 0
+Si aún no existe, ejecutar:
+    ALTER TABLE medicaciones ADD COLUMN administrada INTEGER DEFAULT 0;
 """
 
 from db.connection import get_connection
@@ -27,6 +33,7 @@ CAMPOS_VALIDOS = {
     "horario",
     "fecha",
     "id_enfermero",
+    "administrada",
 }
 
 
@@ -39,6 +46,28 @@ def _validar_requeridos(campos: dict):
     faltantes = requeridos - set(campos.keys())
     if faltantes:
         raise ValueError(f"Faltan campos requeridos: {', '.join(sorted(faltantes))}")
+
+
+def _ensure_column():
+    """
+    Agrega la columna 'administrada' si no existe todavía.
+    Se llama automáticamente al importar el módulo.
+    """
+    conn = get_connection()
+    try:
+        cols = [row[1] for row in conn.execute("PRAGMA table_info(medicaciones)").fetchall()]
+        if "administrada" not in cols:
+            conn.execute("ALTER TABLE medicaciones ADD COLUMN administrada INTEGER DEFAULT 0")
+            conn.commit()
+    finally:
+        conn.close()
+
+
+# Migración automática al importar
+try:
+    _ensure_column()
+except Exception:
+    pass  # Si la tabla aún no existe, no pasa nada
 
 
 # ─────────────────────────────────────────────
@@ -54,6 +83,9 @@ def crear_medicacion(datos: dict) -> int:
         raise ValueError("No se proporcionaron campos válidos.")
 
     _validar_requeridos(campos)
+
+    # administrada siempre inicia en 0
+    campos["administrada"] = 0
 
     columnas = ", ".join(campos.keys())
     placeholders = ", ".join(["?"] * len(campos))
@@ -111,7 +143,8 @@ def listar_medicaciones():
                 m.id_residente,
                 r.nombre AS residente_nombre,
                 m.id_enfermero,
-                e.nombre AS enfermero_nombre
+                e.nombre AS enfermero_nombre,
+                m.administrada
         FROM medicaciones m
         LEFT JOIN residentes r ON m.id_residente = r.id_residente
         LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
@@ -134,7 +167,8 @@ def listar_medicaciones_por_residente(id_residente: int):
                 m.horario,
                 m.dosis,
                 m.id_enfermero,
-                e.nombre AS enfermero_nombre
+                e.nombre AS enfermero_nombre,
+                m.administrada
         FROM medicaciones m
         LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
         WHERE m.id_residente = ?
@@ -158,7 +192,8 @@ def buscar_medicaciones(texto: str):
                 m.horario,
                 m.dosis,
                 r.nombre AS residente_nombre,
-                e.nombre AS enfermero_nombre
+                e.nombre AS enfermero_nombre,
+                m.administrada
         FROM medicaciones m
         LEFT JOIN residentes r ON m.id_residente = r.id_residente
         LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
@@ -204,6 +239,46 @@ def actualizar_medicacion(id_medicacion: int, datos: dict) -> bool:
         conn.close()
 
 
+def marcar_administrada(id_medicacion: int) -> bool:
+    """
+    Marca una medicación como administrada (aplicada al residente).
+    Returns: True si se actualizó, False si no existe.
+    """
+    conn = get_connection()
+    try:
+        cur = conn.execute(
+            "UPDATE medicaciones SET administrada = 1 WHERE id_medicacion = ?",
+            (id_medicacion,)
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def desmarcar_administrada(id_medicacion: int) -> bool:
+    """
+    Revierte el estado administrada de una medicación (por error de registro).
+    Returns: True si se actualizó, False si no existe.
+    """
+    conn = get_connection()
+    try:
+        cur = conn.execute(
+            "UPDATE medicaciones SET administrada = 0 WHERE id_medicacion = ?",
+            (id_medicacion,)
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
 # ─────────────────────────────────────────────
 # DELETE
 # ─────────────────────────────────────────────
@@ -239,7 +314,8 @@ def obtener_historial_residente(id_residente: int):
                 m.fecha,
                 m.horario,
                 m.dosis,
-                e.nombre AS enfermero_nombre
+                e.nombre AS enfermero_nombre,
+                m.administrada
         FROM medicaciones m
         LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
         WHERE m.id_residente = ?
@@ -257,7 +333,7 @@ def obtener_historial_residente(id_residente: int):
 # ─────────────────────────────────────────────
 def obtener_alertas_medicacion(fecha_actual: str, hora_actual: str):
     """
-    Alertas de medicaciones vencidas hasta el momento (retraso calculado).
+    Alertas de medicaciones vencidas hasta el momento, excluyendo las ya administradas.
 
     fecha_actual: 'YYYY-MM-DD'
     hora_actual:  'HH:MM'
@@ -273,9 +349,11 @@ def obtener_alertas_medicacion(fecha_actual: str, hora_actual: str):
         FROM medicaciones m
         LEFT JOIN residentes r ON m.id_residente = r.id_residente
         LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
-        WHERE
+        WHERE (
             (m.fecha < ?)
             OR (m.fecha = ? AND m.horario <= ?)
+        )
+        AND m.administrada = 0
         ORDER BY m.fecha ASC, m.horario ASC
     """
     conn = get_connection()
@@ -287,20 +365,21 @@ def obtener_alertas_medicacion(fecha_actual: str, hora_actual: str):
 
 def obtener_alertas_omisiones(fecha_actual: str):
     """
-    Alertas de medicaciones de días anteriores (posibles omisiones).
+    Alertas de medicaciones de días anteriores no administradas (omisiones reales).
     """
     sql = """
         SELECT  m.id_medicacion,
-        m.fecha,
-        m.horario,
-        m.dosis,
-        r.id_residente,
-        r.nombre AS residente_nombre,
-        e.nombre AS enfermero_nombre
+                m.fecha,
+                m.horario,
+                m.dosis,
+                r.id_residente,
+                r.nombre AS residente_nombre,
+                e.nombre AS enfermero_nombre
         FROM medicaciones m
         LEFT JOIN residentes r ON m.id_residente = r.id_residente
         LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
         WHERE m.fecha < ?
+          AND m.administrada = 0
         ORDER BY m.fecha ASC, m.horario ASC
     """
     conn = get_connection()

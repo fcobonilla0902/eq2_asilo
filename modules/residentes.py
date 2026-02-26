@@ -70,6 +70,7 @@ def obtener_residente(id_residente: int):
         SELECT  r.*,
                 f.nombre    AS familiar_nombre,
                 f.telefono  AS familiar_telefono,
+                f.foto_ine  AS familiar_foto_ine,
                 h.numero    AS habitacion_numero,
                 h.tipo      AS habitacion_tipo
         FROM    residentes r
