@@ -2,27 +2,45 @@
 # TODO Sprint 1 - P4
 #para que el programa valla a la base de datos y confirme si son correctos los usuarios
 import getpass
+import hashlib  # <--- hasing para contrseñas
 from db.connection import get_connection
+
 def inicializar_modulo_auth():
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS doctores (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL
-        )
-    ''')
-    # Usuario de prueba
-    try:
-        cursor.execute("INSERT INTO doctores (usuario, password_hash) VALUES (?, ?)", ("edson", "123"))
-        conn.commit()
-    except:
-        pass 
+    
+    # Lista de tablas que se tienen que crear si no exiten
+    tablas = ["usuarios_admin", "enfermeros", "doctores"]
+    
+    for nombre_tabla in tablas:
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS {nombre_tabla} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL
+            )
+        ''')
+    
+    # usuario de prueba ENCRIPTADO para cada rol
+    password_secreta = hashlib.sha256("123".encode()).hexdigest()
+    
+    usuarios_prueba = [
+        ("usuarios_admin", "admin_edson"),
+        ("enfermeros", "enfermero_edson"),
+        ("doctores", "edson")
+    ]
+    
+    for tabla, user in usuarios_prueba:
+        try:
+            cursor.execute(f"INSERT INTO {tabla} (usuario, password_hash) VALUES (?, ?)", 
+                           (user, password_secreta))
+        except:
+            pass 
+            
+    conn.commit()
     conn.close()
 
-inicializar_modulo_auth() # Se ejecuta al abrir el archivo
-
+inicializar_modulo_auth()
 # -- CAPTURAR DATOS --
 def capturar_datos():
     print("--- BIENVENIDO AL SISTEMA DEL ASILO ---")
@@ -51,6 +69,8 @@ def capturar_datos():
 
 # -- VALIDAR EN BASE DE DATOS --
 def validar_usuario(usuario, password, rol):
+    # Convertir la contraseña escrita a hash para poder comparar
+    password_encrip = hashlib.sha256(password.encode()).hexdigest()
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -64,16 +84,15 @@ def validar_usuario(usuario, password, rol):
         tabla = "doctores"
     
     # se busca al usuario
-    query = f"SELECT password_hash FROM {tabla} WHERE usuario = ?"
-    cursor.execute(query, (usuario,))
+# Buscamos que coincidan tanto el usuario como el hash de la contraseña
+    query = f"SELECT * FROM {tabla} WHERE usuario = ? AND password_hash = ?"
+    cursor.execute(query, (usuario, password_encrip))
     resultado = cursor.fetchone()
     
     conn.close()
     
     if resultado:
-        # resultado[0] es la contraseña que está en la BD
-        if resultado[0] == password:
-            return True
+        return True
     return False
 
 # --- PRUEBA FINAL ---
