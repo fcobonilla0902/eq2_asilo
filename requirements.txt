@@ -1,2 +1,16 @@
-customtkinter>=5.2.0
+# ── UI ─────────────────────────────────────────────────────────────────────────
+customtkinter>=5.2.2
 Pillow>=10.0.0
+
+# ── Base de datos ──────────────────────────────────────────────────────────────
+# sqlite3 viene incluido en la librería estándar de Python 3.x
+
+# ── Seguridad / Auth ───────────────────────────────────────────────────────────
+# hashlib viene incluido en la librería estándar de Python 3.x
+
+# ── Reportes ───────────────────────────────────────────────────────────────────
+reportlab>=4.0.0
+openpyxl>=3.1.0
+
+# ── Utilidades ─────────────────────────────────────────────────────────────────
+python-dateutil>=2.8.2
