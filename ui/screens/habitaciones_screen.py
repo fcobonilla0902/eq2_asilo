@@ -215,13 +215,18 @@ class HabitacionesScreen(ctk.CTkFrame):
             rows = [r for r in rows if str(r.get("tipo",""))==t]
 
         if not rows:
+            for c in range(4):
+                self._grid_scroll.grid_columnconfigure(c, weight=1)
             e = ctk.CTkFrame(self._grid_scroll, fg_color="transparent")
-            e.grid(row=0, column=0, columnspan=4, pady=60)
-            ctk.CTkLabel(e, text="🏨", font=ctk.CTkFont(size=40)).pack()
+            e.grid(row=0, column=0, columnspan=4, pady=60, sticky="ew")
+            e.grid_columnconfigure(0, weight=1)
+            ctk.CTkLabel(e, text="🏨", font=ctk.CTkFont(size=40), anchor="center").grid(row=0, column=0)
             ctk.CTkLabel(e, text="No hay habitaciones registradas",
-                         font=ctk.CTkFont(size=14, weight="bold"), text_color=CLR_TEXT_SOFT).pack(pady=(8,2))
+                         font=ctk.CTkFont(size=14, weight="bold"),
+                         text_color=CLR_TEXT_SOFT, anchor="center").grid(row=1, column=0, pady=(8,2))
             ctk.CTkLabel(e, text="Usa el botón '＋ Nueva habitación' para agregar",
-                         font=ctk.CTkFont(size=11), text_color=CLR_MUTED).pack()
+                         font=ctk.CTkFont(size=11), text_color=CLR_MUTED,
+                         anchor="center").grid(row=2, column=0)
             return
 
         # Grid de 4 columnas
@@ -299,7 +304,7 @@ class HabitacionesScreen(ctk.CTkFrame):
         win = ctk.CTkToplevel(self)
         win.title("Nueva habitación" if not edit else "Editar habitación")
         win.grab_set(); win.resizable(False,False)
-        _center(win, 420, 280)
+        _center(win, 420, 310)
         win.configure(fg_color=CLR_SKY_XLIGHT)
 
         hdr = ctk.CTkFrame(win, fg_color=CLR_WHITE, corner_radius=0, height=56)
@@ -342,8 +347,9 @@ class HabitacionesScreen(ctk.CTkFrame):
             rb.pack(anchor="center")
 
         # Botones
-        btn_bar = ctk.CTkFrame(win, fg_color=CLR_WHITE, height=60, corner_radius=0)
-        btn_bar.pack(fill="x", side="bottom"); btn_bar.pack_propagate(False)
+        btn_bar = ctk.CTkFrame(win, fg_color=CLR_WHITE, corner_radius=0)
+        btn_bar.pack(fill="x", side="bottom")
+        btn_bar.grid_columnconfigure((0,1), weight=1)
 
         def _save():
             numero = num_entry.get().strip()
@@ -365,12 +371,12 @@ class HabitacionesScreen(ctk.CTkFrame):
         ctk.CTkButton(btn_bar, text="Cancelar",
                       fg_color=CLR_WHITE, border_width=1, border_color=CLR_BORDER,
                       text_color=CLR_TEXT_SOFT, hover_color="#f1f5f9",
-                      corner_radius=8, height=36, command=win.destroy
-                      ).pack(side="left", padx=(20,6), pady=12, fill="x", expand=True)
+                      corner_radius=8, height=46, command=win.destroy
+                      ).grid(row=0, column=0, sticky="ew", padx=(20,8), pady=16)
         ctk.CTkButton(btn_bar, text="Guardar",
                       fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
-                      text_color=CLR_WHITE, corner_radius=8, height=36, command=_save
-                      ).pack(side="right", padx=(6,20), pady=12, fill="x", expand=True)
+                      text_color=CLR_WHITE, corner_radius=8, height=46, command=_save
+                      ).grid(row=0, column=1, sticky="ew", padx=(8,20), pady=16)
 
     def _open_edit(self):
         if not self._selected_id: return

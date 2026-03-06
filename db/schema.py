@@ -1,7 +1,11 @@
 """
 Inicializa todas las tablas de la BD si no existen.
-Basado estrictamente en el diagrama del equipo.
 Llamar a init_db() una sola vez al arrancar la app (en main.py).
+
+Tabla 'usuarios' unificada:
+  - Reemplaza 'enfermeros' y 'usuarios_admin'
+  - 'usuario' = CURP del personal
+  - Las FK id_enfermero en medicaciones y signos_vitales apuntan a usuarios.id
 """
 from db.connection import get_connection
 
@@ -44,29 +48,29 @@ CREATE TABLE IF NOT EXISTS residentes (
     fecha_registro              TEXT
 );
 
--- Tabla: enfermeros
-CREATE TABLE IF NOT EXISTS enfermeros (
-    id_enfermero    INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre          TEXT,
-    telefono        TEXT,
-    curp            TEXT
-);
-
--- Tabla: usuarios_admin
-CREATE TABLE IF NOT EXISTS usuarios_admin (
-    id_admin        INTEGER PRIMARY KEY AUTOINCREMENT,
-    usuario         TEXT,
-    password_hash   TEXT
+-- Tabla: usuarios (unifica enfermeros + usuarios_admin)
+-- usuario  = CURP del personal
+-- id_enfermero en otras tablas referencia a usuarios.id
+CREATE TABLE IF NOT EXISTS usuarios (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario        TEXT UNIQUE NOT NULL,
+    password_hash  TEXT NOT NULL,
+    rol            TEXT NOT NULL CHECK(rol IN ('admin','enfermero','doctor')),
+    nombre         TEXT NOT NULL DEFAULT '',
+    telefono       TEXT DEFAULT '',
+    activo         INTEGER DEFAULT 1,
+    fecha_creacion TEXT DEFAULT (date('now'))
 );
 
 -- Tabla: medicaciones
+-- id_enfermero -> usuarios.id
 CREATE TABLE IF NOT EXISTS medicaciones (
     id_medicacion   INTEGER PRIMARY KEY AUTOINCREMENT,
     id_residente    INTEGER REFERENCES residentes(id_residente),
     dosis           TEXT,
     horario         TEXT,
     fecha           TEXT,
-    id_enfermero    INTEGER REFERENCES enfermeros(id_enfermero)
+    id_enfermero    INTEGER REFERENCES usuarios(id)
 );
 
 -- Tabla: actividades
@@ -89,6 +93,7 @@ CREATE TABLE IF NOT EXISTS actividad_residente (
 );
 
 -- Tabla: signos_vitales
+-- id_enfermero -> usuarios.id
 CREATE TABLE IF NOT EXISTS signos_vitales (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     id_residente        INTEGER REFERENCES residentes(id_residente),
@@ -103,7 +108,7 @@ CREATE TABLE IF NOT EXISTS signos_vitales (
     evacuo              INTEGER,
     sueno               TEXT,
     observaciones       TEXT,
-    id_enfermero        INTEGER REFERENCES enfermeros(id_enfermero)
+    id_enfermero        INTEGER REFERENCES usuarios(id)
 );
 """
 
