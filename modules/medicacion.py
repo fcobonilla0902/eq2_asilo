@@ -22,6 +22,9 @@ NOTA: requiere que la tabla medicaciones tenga la columna:
     administrada INTEGER DEFAULT 0
 Si aún no existe, ejecutar:
     ALTER TABLE medicaciones ADD COLUMN administrada INTEGER DEFAULT 0;
+
+NOTA: La columna id_enfermero en medicaciones referencia ahora a usuarios.id
+(tabla usuarios: id, usuario, password_hash, rol, nombre, telefono, activo, fecha_creacion)
 """
 
 from db.connection import get_connection
@@ -110,18 +113,18 @@ def crear_medicacion(datos: dict) -> int:
 # ─────────────────────────────────────────────
 def obtener_medicacion(id_medicacion: int):
     """
-    Retorna una medicación por ID con datos del residente y enfermero.
+    Retorna una medicación por ID con datos del residente y usuario (enfermero).
     Retorna None si no existe.
     """
     sql = """
         SELECT  m.*,
-                r.nombre AS residente_nombre,
-                r.curp   AS residente_curp,
-                e.nombre AS enfermero_nombre,
-                e.telefono AS enfermero_telefono
+                r.nombre   AS residente_nombre,
+                r.curp     AS residente_curp,
+                u.nombre   AS enfermero_nombre,
+                u.telefono AS enfermero_telefono
         FROM medicaciones m
         LEFT JOIN residentes r ON m.id_residente = r.id_residente
-        LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
+        LEFT JOIN usuarios u   ON m.id_enfermero = u.id
         WHERE m.id_medicacion = ?
     """
     conn = get_connection()
@@ -133,7 +136,7 @@ def obtener_medicacion(id_medicacion: int):
 
 def listar_medicaciones():
     """
-    Lista todas las medicaciones programadas con nombres de residente y enfermero.
+    Lista todas las medicaciones programadas con nombres de residente y usuario (enfermero).
     """
     sql = """
         SELECT  m.id_medicacion,
@@ -143,11 +146,11 @@ def listar_medicaciones():
                 m.id_residente,
                 r.nombre AS residente_nombre,
                 m.id_enfermero,
-                e.nombre AS enfermero_nombre,
+                u.nombre AS enfermero_nombre,
                 m.administrada
         FROM medicaciones m
         LEFT JOIN residentes r ON m.id_residente = r.id_residente
-        LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
+        LEFT JOIN usuarios u   ON m.id_enfermero = u.id
         ORDER BY m.fecha DESC, m.horario ASC
     """
     conn = get_connection()
@@ -167,10 +170,10 @@ def listar_medicaciones_por_residente(id_residente: int):
                 m.horario,
                 m.dosis,
                 m.id_enfermero,
-                e.nombre AS enfermero_nombre,
+                u.nombre AS enfermero_nombre,
                 m.administrada
         FROM medicaciones m
-        LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
+        LEFT JOIN usuarios u ON m.id_enfermero = u.id
         WHERE m.id_residente = ?
         ORDER BY m.fecha DESC, m.horario DESC
     """
@@ -192,11 +195,11 @@ def buscar_medicaciones(texto: str):
                 m.horario,
                 m.dosis,
                 r.nombre AS residente_nombre,
-                e.nombre AS enfermero_nombre,
+                u.nombre AS enfermero_nombre,
                 m.administrada
         FROM medicaciones m
         LEFT JOIN residentes r ON m.id_residente = r.id_residente
-        LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
+        LEFT JOIN usuarios u   ON m.id_enfermero = u.id
         WHERE r.nombre LIKE ?
            OR m.dosis LIKE ?
            OR m.fecha LIKE ?
@@ -314,10 +317,10 @@ def obtener_historial_residente(id_residente: int):
                 m.fecha,
                 m.horario,
                 m.dosis,
-                e.nombre AS enfermero_nombre,
+                u.nombre AS enfermero_nombre,
                 m.administrada
         FROM medicaciones m
-        LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
+        LEFT JOIN usuarios u ON m.id_enfermero = u.id
         WHERE m.id_residente = ?
         ORDER BY m.fecha DESC, m.horario DESC
     """
@@ -345,10 +348,10 @@ def obtener_alertas_medicacion(fecha_actual: str, hora_actual: str):
                 m.dosis,
                 r.id_residente,
                 r.nombre AS residente_nombre,
-                e.nombre AS enfermero_nombre
+                u.nombre AS enfermero_nombre
         FROM medicaciones m
         LEFT JOIN residentes r ON m.id_residente = r.id_residente
-        LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
+        LEFT JOIN usuarios u   ON m.id_enfermero = u.id
         WHERE (
             (m.fecha < ?)
             OR (m.fecha = ? AND m.horario <= ?)
@@ -374,10 +377,10 @@ def obtener_alertas_omisiones(fecha_actual: str):
                 m.dosis,
                 r.id_residente,
                 r.nombre AS residente_nombre,
-                e.nombre AS enfermero_nombre
+                u.nombre AS enfermero_nombre
         FROM medicaciones m
         LEFT JOIN residentes r ON m.id_residente = r.id_residente
-        LEFT JOIN enfermeros e ON m.id_enfermero = e.id_enfermero
+        LEFT JOIN usuarios u   ON m.id_enfermero = u.id
         WHERE m.fecha < ?
           AND m.administrada = 0
         ORDER BY m.fecha ASC, m.horario ASC
