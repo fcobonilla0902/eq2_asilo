@@ -201,8 +201,7 @@ class MedicacionScreen(ctk.CTkFrame):
         page.grid_rowconfigure(1, weight=1)
         page.grid_columnconfigure(0, weight=1)
 
-        # Columna extra "Aplicacion" al final
-        cols   = ["Residente", "Dosis", "Horario", "Fecha", "Enfermero", "Estado", "Aplicacion"]
+        cols   = ["Residente", "Dosis", "Horario", "Fecha", "Enfermero / Doctor", "Estado", "Aplicacion"]
         widths = [170,          155,     80,         100,    135,          100,       120]
         hdr = ctk.CTkFrame(page, fg_color="#f8fafc", corner_radius=0, height=38)
         hdr.grid(row=0, column=0, sticky="ew")
@@ -347,7 +346,6 @@ class MedicacionScreen(ctk.CTkFrame):
                 lbl.grid(row=0, column=c, padx=(14 if c == 0 else 4, 0), sticky="w")
                 _bind(lbl)
 
-            # Badge estado (col 5)
             badge_frame = ctk.CTkFrame(rf, fg_color=estado_bg, corner_radius=6, width=88, height=26)
             badge_frame.grid(row=0, column=5, padx=(4, 4), pady=12)
             badge_frame.grid_propagate(False)
@@ -355,7 +353,6 @@ class MedicacionScreen(ctk.CTkFrame):
                          font=ctk.CTkFont(size=10, weight="bold"),
                          text_color=estado_fg).place(relx=.5, rely=.5, anchor="center")
 
-            # ── Botón Aplicacion (col 6) ───────────────────────────────────
             if administrada:
                 btn_app = ctk.CTkButton(
                     rf, text="✓ Aplicada",
@@ -506,7 +503,6 @@ class MedicacionScreen(ctk.CTkFrame):
                          font=ctk.CTkFont(size=13, weight="bold"),
                          text_color=CLR_TEXT).pack(side="left")
 
-            # Botón rápido desde alertas
             ctk.CTkButton(
                 top_row, text="Registrar aplicacion",
                 fg_color=CLR_GREEN_LIGHT, hover_color="#bbf7d0",
@@ -524,7 +520,7 @@ class MedicacionScreen(ctk.CTkFrame):
                          text_color=estado_fg).place(relx=.5, rely=.5, anchor="center")
 
             ctk.CTkLabel(content,
-                         text=f"Dosis: {dosis}   Horario: {horario}   Fecha: {fecha}   Enfermero: {enf_name}",
+                         text=f"Dosis: {dosis}   Horario: {horario}   Fecha: {fecha}   Enfermero / Doctor: {enf_name}",
                          font=ctk.CTkFont(size=11), text_color=CLR_MUTED).pack(anchor="w", pady=(3, 0))
 
     def _registrar_desde_alerta(self, rid: int):
@@ -577,14 +573,16 @@ class MedicacionScreen(ctk.CTkFrame):
         except Exception:
             res_opts = {}
 
+        # ── Consultar solo enfermeros y doctores activos ─────────────────────
         try:
             from db.connection import get_connection
             conn = get_connection()
             enf_rows = conn.execute(
-                "SELECT id_enfermero, nombre, curp FROM enfermeros ORDER BY nombre"
+                "SELECT id, nombre, usuario, rol FROM usuarios "
+                "WHERE activo = 1 AND rol IN ('enfermero', 'doctor') ORDER BY nombre"
             ).fetchall()
             conn.close()
-            enf_opts = {f"{r[1]} - {r[2]}": r[0] for r in enf_rows}
+            enf_opts = {f"{r[1]} ({r[3]}) - {r[2]}": r[0] for r in enf_rows}
         except Exception:
             enf_opts = {}
 
@@ -628,15 +626,15 @@ class MedicacionScreen(ctk.CTkFrame):
         fecha_val = med.get("fecha", date.today().isoformat()) if edit else date.today().isoformat()
         entry_fecha.insert(0, fecha_val)
 
-        grp_enf = _field(body, "Enfermero", 2, 1)
+        grp_enf = _field(body, "Enfermero / Doctor", 2, 1)
         combo_enf = ctk.CTkComboBox(grp_enf,
-                                    values=list(enf_opts.keys()) if enf_opts else ["Sin enfermeros"],
+                                    values=list(enf_opts.keys()) if enf_opts else ["Sin enfermeros/doctores"],
                                     fg_color=CLR_BG, border_color=CLR_BORDER,
                                     text_color=CLR_TEXT, button_color=CLR_SKY_DARK,
                                     dropdown_fg_color=CLR_WHITE, dropdown_text_color=CLR_TEXT,
                                     height=36, corner_radius=8)
         combo_enf.pack(fill="x")
-        combo_enf.set("Selecciona un enfermero...")
+        combo_enf.set("Seleccionar...")
         if edit and enf_opts:
             for k, v in enf_opts.items():
                 if v == med.get("id_enfermero"):
