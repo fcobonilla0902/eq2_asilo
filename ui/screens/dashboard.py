@@ -226,6 +226,12 @@ class Dashboard(ctk.CTk):
         elif key == "habitaciones":
             from ui.screens.habitaciones_screen import HabitacionesScreen
             return HabitacionesScreen(self.content_frame)
+        elif key == "signos_vitales":
+            from ui.screens.signos_vitales_screen import SignosVitalesScreen
+            return SignosVitalesScreen(self.content_frame)
+        elif key == "actividades":
+            from ui.screens.actividades_screen import ActividadesScreen
+            return ActividadesScreen(self.content_frame)
         elif key == "usuarios":
             from ui.screens.usuarios_screen import UsuariosScreen
             return UsuariosScreen(self.content_frame)
