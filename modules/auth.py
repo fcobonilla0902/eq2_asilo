@@ -15,6 +15,7 @@ PERMISOS = {
         "signos_vitales": True,
         "actividades":    True,
         "usuarios":       True,
+        "respaldo":       True,
     },
     "enfermero": {
         "residentes":     True,
@@ -24,6 +25,7 @@ PERMISOS = {
         "signos_vitales": True,
         "actividades":    True,
         "usuarios":       False,
+        "respaldo":       False,
     },
     "doctor": {
         "residentes":     True,
@@ -33,6 +35,7 @@ PERMISOS = {
         "signos_vitales": True,
         "actividades":    False,
         "usuarios":       False,
+        "respaldo":       False,
     },
 }
 
