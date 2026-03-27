@@ -37,6 +37,7 @@ NAV_ITEMS = [
     ("signos_vitales", "📈", "Signos Vitales", "signos_vitales"),
     ("actividades",    "❤️", "Actividades",    "actividades"),
     ("usuarios",       "🔒", "Usuarios",       "usuarios"),
+    ("respaldo",       "💾", "Respaldo BD",    "respaldo"),
 ]
 
 
@@ -235,6 +236,9 @@ class Dashboard(ctk.CTk):
         elif key == "usuarios":
             from ui.screens.usuarios_screen import UsuariosScreen
             return UsuariosScreen(self.content_frame)
+        elif key == "respaldo":
+            from ui.screens.respaldo_screen import RespaldoScreen
+            return RespaldoScreen(self.content_frame)
         else:
             return self._placeholder(key)
 

@@ -17,6 +17,10 @@ def main():
     from modules.auth import inicializar_modulo_auth
     inicializar_modulo_auth()
 
+    # ── Arrancar scheduler de respaldo automático ─────────────────────────
+    from db.backup_manager import backup_scheduler
+    backup_scheduler.iniciar()
+
     import customtkinter as ctk
     ctk.set_appearance_mode("light")
     ctk.set_default_color_theme("blue")
@@ -41,7 +45,14 @@ def main():
         root.destroy()
         # Lanzar dashboard con el usuario autenticado
         app = Dashboard(usuario=datos_usuario)
+        # Guardar respaldo al cerrar la ventana principal
+        app.protocol("WM_DELETE_WINDOW", lambda: _cerrar_app(app))
         app.mainloop()
+
+    def _cerrar_app(app):
+        from db.backup_manager import backup_scheduler
+        backup_scheduler.respaldar_al_salir()
+        app.destroy()
 
     from ui.screens.login import LoginScreen
     login = LoginScreen(root, on_success=on_login_success)
