@@ -4,6 +4,10 @@ Diseño mejorado: más claro, agradable, legible.
 """
 import customtkinter as ctk
 from datetime import date, datetime
+from fpdf import FPDF
+from tkcalendar import DateEntry
+from tkinter import filedialog
+
 
 # ── Paleta ────────────────────────────────────────────────────────────────────
 CLR_SKY        = "#38bdf8"
@@ -69,6 +73,8 @@ class MedicacionScreen(ctk.CTkFrame):
         self._build_stats()
         self._build_tabs()
         self._load_data()
+        
+        
 
     # ── Topbar ────────────────────────────────────────────────────────────────
     def _build_topbar(self):
@@ -104,8 +110,16 @@ class MedicacionScreen(ctk.CTkFrame):
                       text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
                       corner_radius=10, height=38, command=self._open_form,
                       ).grid(row=0, column=2, padx=(8, 28), pady=14)
+        
+        # Botón de Reportes
+        ctk.CTkButton(bar, text="📊 Reportes",
+                      fg_color=CLR_AMBER, hover_color=CLR_AMBER_LIGHT,
+                      text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
+                      corner_radius=10, height=38, command=self._open_report_modal,
+                      ).grid(row=0, column=3, padx=(0, 28), pady=14)
 
-        ctk.CTkFrame(bar, fg_color=CLR_BORDER, height=1).grid(row=1, column=0, columnspan=3, sticky="ew")
+
+        ctk.CTkFrame(bar, fg_color=CLR_BORDER, height=1).grid(row=1, column=0, columnspan=4, sticky="ew")
 
     # ── Stats (4 tarjetas ahora) ───────────────────────────────────────────────
     def _build_stats(self):
@@ -825,3 +839,233 @@ class MedicacionScreen(ctk.CTkFrame):
                      font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_WHITE).pack(fill="both", expand=True, padx=14)
         t.after(2800, t.destroy)
+        
+        
+        
+    def _open_report_modal(self):
+        modal = ctk.CTkToplevel(self)
+        modal.title("Generar Reporte")
+        _center(modal, 420, 320)
+        modal.grab_set()
+
+        frame = ctk.CTkFrame(modal, fg_color=CLR_WHITE, corner_radius=12)
+        frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Combobox de residentes
+        residentes = list({r.get("residente_nombre","") for r in self._all_rows if isinstance(r,dict)})
+        self.residente_var = ctk.StringVar()
+        ctk.CTkLabel(frame, text="Residente:", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(4,0))
+        ctk.CTkComboBox(frame, values=residentes or ["Todos"], variable=self.residente_var).pack(fill="x", pady=6)
+
+        # Calendarios de fechas
+        from tkcalendar import DateEntry
+        ctk.CTkLabel(frame, text="Fecha inicio:", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(4,0))
+        fecha_ini_widget = DateEntry(frame, date_pattern="yyyy-mm-dd")
+        fecha_ini_widget.pack(fill="x", pady=6)
+
+        ctk.CTkLabel(frame, text="Fecha fin:", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(4,0))
+        fecha_fin_widget = DateEntry(frame, date_pattern="yyyy-mm-dd")
+        fecha_fin_widget.pack(fill="x", pady=6)
+
+        # Botón generar
+        def _generar():
+            # primero obtengo los valores
+            fecha_inicio = fecha_ini_widget.get_date().isoformat()
+            fecha_fin    = fecha_fin_widget.get_date().isoformat()
+            residente    = self.residente_var.get()
+
+            # cierro el modal de consulta
+            modal.destroy()
+
+            # abro el reporte con los valores guardados
+            self._open_report_result(residente, fecha_inicio, fecha_fin)
+
+
+        ctk.CTkButton(frame, text="Generar Reporte",
+                    fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
+                    text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
+                    corner_radius=10, height=38,
+                    command=_generar
+                    ).pack(pady=(12,0))
+
+
+
+    
+    
+    def _open_report_result(self, residente, fecha_ini, fecha_fin):
+        win = ctk.CTkToplevel(self)
+        win.title("Reporte de Medicaciones")
+        _center(win, 900, 600)
+        win.grab_set()
+        win.configure(fg_color=CLR_WHITE)
+
+        # Header institucional
+        hdr = ctk.CTkFrame(win, fg_color=CLR_SKY_DARK, corner_radius=0, height=70)
+        hdr.pack(fill="x")
+        ctk.CTkLabel(hdr, text="🏥  Sistema de Gestión - Asilo",
+                    font=ctk.CTkFont(size=18, weight="bold"),
+                    text_color=CLR_WHITE).pack(side="left", padx=24, pady=20)
+
+        # Bloque de criterios
+        crit = ctk.CTkFrame(win, fg_color=CLR_SKY_XLIGHT, corner_radius=10, border_width=1, border_color=CLR_BORDER)
+        crit.pack(fill="x", padx=20, pady=(12, 0))
+        ctk.CTkLabel(crit, text=f"Residente: {residente if residente else 'Todos'}",
+                    font=ctk.CTkFont(size=12), text_color=CLR_TEXT).pack(anchor="w", padx=12, pady=4)
+        ctk.CTkLabel(crit, text=f"Fechas consultadas: {fecha_ini} → {fecha_fin}",
+                    font=ctk.CTkFont(size=12), text_color=CLR_TEXT).pack(anchor="w", padx=12, pady=4)
+
+        # Tabla con scroll
+        body = ctk.CTkScrollableFrame(win, fg_color=CLR_WHITE, corner_radius=0)
+        body.pack(fill="both", expand=True, padx=20, pady=16)
+
+        # Encabezados
+        headers = ["Residente", "Dosis", "Fecha", "Horario", "Enfermero/Doctor", "Estado"]
+        widths  = [160, 140, 100, 80, 160, 100]
+        hdr_row = ctk.CTkFrame(body, fg_color=CLR_BG, corner_radius=0, height=36)
+        hdr_row.pack(fill="x")
+        for h, w in zip(headers, widths):
+            ctk.CTkLabel(hdr_row, text=h, font=ctk.CTkFont(size=11, weight="bold"),
+                        text_color=CLR_TEXT_SOFT, width=w, anchor="w").pack(side="left", padx=8)
+
+        # Filtrar datos
+        rows = self._all_rows
+        if residente and residente != "Todos":
+            rows = [r for r in rows if r.get("residente_nombre","") == residente]
+        if fecha_ini:
+            rows = [r for r in rows if r.get("fecha","") >= fecha_ini]
+        if fecha_fin:
+            rows = [r for r in rows if r.get("fecha","") <= fecha_fin]
+
+        # Renderizar filas
+        for idx, row in enumerate(rows):
+            res_name = row.get("residente_nombre","-")
+            dosis    = row.get("dosis","-")
+            fecha    = row.get("fecha","-")
+            horario  = row.get("horario","-")
+            enf_name = row.get("enfermero_nombre","-")
+            estado_txt, estado_bg, estado_fg = _estado(fecha, horario, self._get_adm(row))
+
+            rf = ctk.CTkFrame(body, fg_color=CLR_WHITE if idx % 2 == 0 else CLR_ROW_ALT, height=40)
+            rf.pack(fill="x", pady=2)
+            vals = [res_name, dosis, fecha, horario, enf_name, estado_txt]
+            for v, w in zip(vals, widths):
+                ctk.CTkLabel(rf, text=v, font=ctk.CTkFont(size=12),
+                            text_color=CLR_TEXT_SOFT, width=w, anchor="w").pack(side="left", padx=8)
+
+        # Barra de acciones
+        btn_bar = ctk.CTkFrame(win, fg_color=CLR_WHITE, height=60)
+        btn_bar.pack(fill="x")
+        ctk.CTkButton(btn_bar, text="Imprimir PDF",
+              fg_color=CLR_GREEN_DARK, hover_color=CLR_GREEN,
+              text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
+              corner_radius=10, height=38,
+              command=lambda: self._export_pdf(rows, residente, fecha_ini, fecha_fin, win)
+              ).pack(side="right", padx=20, pady=10)
+        ctk.CTkButton(btn_bar, text="Cerrar",
+                    fg_color=CLR_WHITE, border_width=1, border_color=CLR_BORDER,
+                    text_color=CLR_TEXT_SOFT, hover_color="#f1f5f9",
+                    corner_radius=10, height=38,
+                    command=win.destroy
+                    ).pack(side="right", padx=10, pady=10)
+
+
+
+
+
+
+
+    def _export_pdf(self, rows, residente, fecha_ini, fecha_fin, parent_win=None):
+        try:
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf",
+                filetypes=[("PDF files", "*.pdf")],
+                title="Guardar reporte como..."
+            )
+            if not file_path:
+                return
+
+            pdf = FPDF(orientation="P", unit="mm", format="A4")
+            pdf.add_page()
+
+            # ✅ Márgenes y salto automático
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.set_margins(10, 10, 10)
+
+            page_width = pdf.w - 20  # ancho útil
+
+            # ✅ Función para limpiar texto
+            def _safe_text(text):
+                if text is None:
+                    return "-"
+                return str(text).replace("\n", " ").replace("\r", " ")
+
+            # Logo opcional
+            try:
+                pdf.image("logo.png", x=10, y=8, w=20)
+            except:
+                pass
+
+            # Encabezado
+            pdf.set_font("Arial", "B", 16)
+            pdf.set_text_color(14, 165, 233)
+            pdf.cell(0, 10, "Sistema de Gestión - Asilo", ln=True, align="C")
+            pdf.ln(5)
+
+            # Criterios
+            pdf.set_font("Arial", "", 12)
+            pdf.set_text_color(0, 0, 0)
+
+            pdf.multi_cell(page_width, 8, f"Residente: {_safe_text(residente) if residente else 'Todos'}")
+            pdf.set_x(10)
+            pdf.multi_cell(page_width, 8, f"Fechas consultadas: {_safe_text(fecha_ini)} a {_safe_text(fecha_fin)}")
+            pdf.set_x(10)
+            pdf.multi_cell(page_width, 8, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+            pdf.ln(5)
+
+            # Datos como párrafos
+            pdf.set_font("Arial", "", 11)
+
+            for idx, row in enumerate(rows, start=1):
+                res_name = _safe_text(row.get("residente_nombre"))
+                dosis    = _safe_text(row.get("dosis"))
+                fecha    = _safe_text(row.get("fecha"))
+                horario  = _safe_text(row.get("horario"))
+                enf_name = _safe_text(row.get("enfermero_nombre"))
+
+                estado_txt, _, _ = _estado(fecha, horario, self._get_adm(row))
+                estado_txt = _safe_text(estado_txt)
+
+                pdf.set_text_color(0, 0, 0)
+
+                pdf.multi_cell(page_width, 8, f"Registro {idx}:")
+                pdf.set_x(10)
+                pdf.multi_cell(page_width, 8, f"Residente: {res_name}")
+                pdf.set_x(10)
+                pdf.multi_cell(page_width, 8, f"Dosis: {dosis}")
+                pdf.set_x(10)
+                pdf.multi_cell(page_width, 8, f"Fecha: {fecha}")
+                pdf.set_x(10)
+                pdf.multi_cell(page_width, 8, f"Horario: {horario}")
+                pdf.set_x(10)
+                pdf.multi_cell(page_width, 8, f"Enfermero/Doctor: {enf_name}")
+                pdf.set_x(10)
+                pdf.multi_cell(page_width, 8, f"Estado: {estado_txt}")
+                pdf.ln(4)
+
+            # Pie
+            pdf.ln(5)
+            pdf.set_font("Arial", "I", 9)
+            pdf.multi_cell(
+                page_width,
+                8,
+                "Este reporte es generado automáticamente por el Sistema de Gestión - Asilo.\nConfidencial - Uso interno."
+            )
+
+            pdf.output(file_path)
+            self._toast(f"Reporte exportado en:\n{file_path}")
+
+            if parent_win:
+                parent_win.after(300, parent_win.destroy)
+
+        except Exception as ex:
+            self._toast(f"Error al generar PDF: {ex}", error=True)
