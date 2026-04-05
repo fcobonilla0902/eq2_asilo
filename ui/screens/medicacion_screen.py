@@ -4,9 +4,8 @@ Diseño mejorado: más claro, agradable, legible.
 """
 import customtkinter as ctk
 from datetime import date, datetime
-from fpdf import FPDF
-from tkcalendar import DateEntry
 from tkinter import filedialog
+import calendar
 
 
 # ── Paleta ────────────────────────────────────────────────────────────────────
@@ -59,6 +58,265 @@ def _estado(fecha_str: str, horario_str: str, administrada: int = 0):
     return     "Programada", CLR_GREEN_LIGHT, CLR_GREEN
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Widget: Calendario emergente
+# ─────────────────────────────────────────────────────────────────────────────
+class CalendarPicker(ctk.CTkToplevel):
+    DIAS  = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
+    MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio",
+             "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
+
+    def __init__(self, parent, initial_date: str, on_select):
+        super().__init__(parent)
+        self.overrideredirect(True)
+        self.configure(fg_color=CLR_WHITE)
+        self.attributes("-topmost", True)
+
+        outer = ctk.CTkFrame(self, fg_color=CLR_BORDER, corner_radius=14)
+        outer.pack(padx=1, pady=1, fill="both", expand=True)
+        inner = ctk.CTkFrame(outer, fg_color=CLR_WHITE, corner_radius=13)
+        inner.pack(padx=1, pady=1, fill="both", expand=True)
+
+        self._on_select = on_select
+        try:
+            self._current = date.fromisoformat(initial_date)
+        except Exception:
+            self._current = date.today()
+        self._view_year  = self._current.year
+        self._view_month = self._current.month
+        self._container  = inner
+        self._build()
+
+        parent.update_idletasks()
+        x = parent.winfo_rootx()
+        y = parent.winfo_rooty() + parent.winfo_height() + 4
+        self.geometry(f"280x300+{x}+{y}")
+        self.bind("<FocusOut>", self._on_focus_out)
+        self.focus_set()
+
+    def _on_focus_out(self, event):
+        self.after(100, self._check_focus)
+
+    def _check_focus(self):
+        try:
+            focused = self.focus_get()
+            if focused is None or str(focused) not in str(self.winfo_children()):
+                self.destroy()
+        except Exception:
+            self.destroy()
+
+    def _build(self):
+        for w in self._container.winfo_children():
+            w.destroy()
+
+        header = ctk.CTkFrame(self._container, fg_color="transparent")
+        header.pack(fill="x", padx=12, pady=(10, 4))
+
+        ctk.CTkButton(header, text="‹", width=28, height=28,
+                      fg_color=CLR_BG, hover_color=CLR_BORDER,
+                      text_color=CLR_TEXT, corner_radius=6,
+                      font=ctk.CTkFont(size=14),
+                      command=self._prev_month).pack(side="left")
+        ctk.CTkLabel(header,
+                     text=f"{self.MESES[self._view_month-1]} {self._view_year}",
+                     font=ctk.CTkFont(size=13, weight="bold"),
+                     text_color=CLR_TEXT).pack(side="left", expand=True)
+        ctk.CTkButton(header, text="›", width=28, height=28,
+                      fg_color=CLR_BG, hover_color=CLR_BORDER,
+                      text_color=CLR_TEXT, corner_radius=6,
+                      font=ctk.CTkFont(size=14),
+                      command=self._next_month).pack(side="right")
+
+        days_hdr = ctk.CTkFrame(self._container, fg_color="transparent")
+        days_hdr.pack(fill="x", padx=12, pady=(2, 0))
+        for i, d in enumerate(self.DIAS):
+            ctk.CTkLabel(days_hdr, text=d, width=32,
+                         font=ctk.CTkFont(size=10, weight="bold"),
+                         text_color=CLR_MUTED).grid(row=0, column=i, padx=1)
+
+        grid = ctk.CTkFrame(self._container, fg_color="transparent")
+        grid.pack(fill="both", expand=True, padx=12, pady=(2, 10))
+
+        cal   = calendar.monthcalendar(self._view_year, self._view_month)
+        today = date.today()
+
+        for r, week in enumerate(cal):
+            for c, day in enumerate(week):
+                if day == 0:
+                    ctk.CTkFrame(grid, fg_color="transparent", width=32, height=30).grid(
+                        row=r, column=c, padx=1, pady=1)
+                    continue
+                d = date(self._view_year, self._view_month, day)
+                is_sel   = (d == self._current)
+                is_today = (d == today)
+                if is_sel:
+                    bg, fg, hover = CLR_SKY_DARK, CLR_WHITE, CLR_SKY_XDARK
+                elif is_today:
+                    bg, fg, hover = CLR_SKY_LIGHT, CLR_SKY_XDARK, "#bae6fd"
+                else:
+                    bg, fg, hover = "transparent", CLR_TEXT, CLR_BG
+                ctk.CTkButton(
+                    grid, text=str(day), width=32, height=30,
+                    fg_color=bg, hover_color=hover, text_color=fg,
+                    corner_radius=6,
+                    font=ctk.CTkFont(size=11, weight="bold" if is_sel or is_today else "normal"),
+                    command=lambda _d=d: self._pick(_d)
+                ).grid(row=r, column=c, padx=1, pady=1)
+
+    def _prev_month(self):
+        if self._view_month == 1:
+            self._view_month = 12; self._view_year -= 1
+        else:
+            self._view_month -= 1
+        self._build()
+
+    def _next_month(self):
+        if self._view_month == 12:
+            self._view_month = 1; self._view_year += 1
+        else:
+            self._view_month += 1
+        self._build()
+
+    def _pick(self, d: date):
+        self._on_select(d.isoformat())
+        self.destroy()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Widget: Selector de hora emergente
+# ─────────────────────────────────────────────────────────────────────────────
+class TimePicker(ctk.CTkToplevel):
+    def __init__(self, parent, initial_time: str, on_select):
+        super().__init__(parent)
+        self.overrideredirect(True)
+        self.configure(fg_color=CLR_WHITE)
+        self.attributes("-topmost", True)
+        self._on_select = on_select
+        try:
+            parts = initial_time.strip().split(":")
+            self._hour   = int(parts[0]) % 24
+            self._minute = int(parts[1]) % 60
+        except Exception:
+            self._hour = 9; self._minute = 0
+
+        outer = ctk.CTkFrame(self, fg_color=CLR_BORDER, corner_radius=14)
+        outer.pack(padx=1, pady=1, fill="both", expand=True)
+        inner = ctk.CTkFrame(outer, fg_color=CLR_WHITE, corner_radius=13)
+        inner.pack(padx=1, pady=1, fill="both", expand=True)
+        self._build(inner)
+
+        parent.update_idletasks()
+        x = parent.winfo_rootx()
+        y = parent.winfo_rooty() + parent.winfo_height() + 4
+        self.geometry(f"230x320+{x}+{y}")
+        self.bind("<FocusOut>", self._on_focus_out)
+        self.focus_set()
+
+    def _on_focus_out(self, event):
+        self.after(150, self._check_focus)
+
+    def _check_focus(self):
+        try:
+            if self.focus_get() is None:
+                self.destroy()
+        except Exception:
+            self.destroy()
+
+    def _build(self, container):
+        ctk.CTkLabel(container, text="Selecciona la hora",
+                     font=ctk.CTkFont(size=12, weight="bold"),
+                     text_color=CLR_TEXT).pack(pady=(12, 6))
+
+        cols_frame = ctk.CTkFrame(container, fg_color="transparent")
+        cols_frame.pack(fill="both", expand=True, padx=16)
+
+        hdr = ctk.CTkFrame(cols_frame, fg_color="transparent")
+        hdr.pack(fill="x")
+        ctk.CTkLabel(hdr, text="Hora",    font=ctk.CTkFont(size=10, weight="bold"),
+                     text_color=CLR_MUTED, width=90).pack(side="left",  expand=True)
+        ctk.CTkLabel(hdr, text="Minutos", font=ctk.CTkFont(size=10, weight="bold"),
+                     text_color=CLR_MUTED, width=90).pack(side="right", expand=True)
+
+        wheels = ctk.CTkFrame(cols_frame, fg_color="transparent")
+        wheels.pack(fill="both", expand=True, pady=4)
+
+        hour_col = ctk.CTkScrollableFrame(wheels, fg_color=CLR_BG, corner_radius=8,
+                                          width=85, height=160)
+        hour_col.pack(side="left", expand=True, fill="y")
+        min_col  = ctk.CTkScrollableFrame(wheels, fg_color=CLR_BG, corner_radius=8,
+                                          width=85, height=160)
+        min_col.pack(side="right", expand=True, fill="y")
+
+        self._hour_btns = []
+        self._min_btns  = []
+
+        for h in range(24):
+            is_sel = (h == self._hour)
+            btn = ctk.CTkButton(hour_col, text=f"{h:02d}", height=30, width=75,
+                                fg_color=CLR_SKY_DARK if is_sel else "transparent",
+                                hover_color=CLR_SKY_LIGHT,
+                                text_color=CLR_WHITE if is_sel else CLR_TEXT,
+                                font=ctk.CTkFont(size=12, weight="bold" if is_sel else "normal"),
+                                corner_radius=6,
+                                command=lambda _h=h: self._select_hour(_h))
+            btn.pack(pady=1)
+            self._hour_btns.append(btn)
+
+        for m in range(60):
+            is_sel = (m == self._minute)
+            btn = ctk.CTkButton(min_col, text=f"{m:02d}", height=30, width=75,
+                                fg_color=CLR_SKY_DARK if is_sel else "transparent",
+                                hover_color=CLR_SKY_LIGHT,
+                                text_color=CLR_WHITE if is_sel else CLR_TEXT,
+                                font=ctk.CTkFont(size=12, weight="bold" if is_sel else "normal"),
+                                corner_radius=6,
+                                command=lambda _m=m: self._select_minute(_m))
+            btn.pack(pady=1)
+            self._min_btns.append(btn)
+
+        ctk.CTkButton(container, text="Confirmar",
+                      fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
+                      text_color=CLR_WHITE, corner_radius=8, height=36,
+                      font=ctk.CTkFont(size=12, weight="bold"),
+                      command=self._confirm).pack(fill="x", padx=16, pady=(6, 12))
+
+        # Scroll automático al elemento seleccionado
+        self.after(80, lambda: self._scroll_to_selected(hour_col, self._hour, min_col, self._minute))
+
+    def _select_hour(self, h):
+        self._hour_btns[self._hour].configure(fg_color="transparent", text_color=CLR_TEXT,
+                                               font=ctk.CTkFont(size=12, weight="normal"))
+        self._hour = h
+        self._hour_btns[h].configure(fg_color=CLR_SKY_DARK, text_color=CLR_WHITE,
+                                      font=ctk.CTkFont(size=12, weight="bold"))
+
+    def _scroll_to_selected(self, hour_col, hour, min_col, minute):
+        """Desplaza los scrollframes al elemento seleccionado."""
+        try:
+            btn_height = 31  # 30px altura + 1px pady
+            total_hours = 24
+            total_mins  = 60
+            # Fracción 0..1 para mover el scroll
+            frac_h = hour / max(total_hours - 1, 1)
+            frac_m = minute / max(total_mins - 1, 1)
+            # CTkScrollableFrame expone _parent_canvas
+            hour_col._parent_canvas.yview_moveto(max(0, frac_h - 0.15))
+            min_col._parent_canvas.yview_moveto(max(0, frac_m - 0.15))
+        except Exception:
+            pass
+
+    def _select_minute(self, m):
+        self._min_btns[self._minute].configure(fg_color="transparent", text_color=CLR_TEXT,
+                                                font=ctk.CTkFont(size=12, weight="normal"))
+        self._minute = m
+        self._min_btns[m].configure(fg_color=CLR_SKY_DARK, text_color=CLR_WHITE,
+                                     font=ctk.CTkFont(size=12, weight="bold"))
+
+    def _confirm(self):
+        self._on_select(f"{self._hour:02d}:{self._minute:02d}")
+        self.destroy()
+
+
 class MedicacionScreen(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color=CLR_SKY_XLIGHT, corner_radius=0)
@@ -94,7 +352,7 @@ class MedicacionScreen(ctk.CTkFrame):
                                    border_width=1, border_color=CLR_BORDER)
         search_wrap.grid(row=0, column=1, padx=16, pady=14, sticky="ew")
         search_wrap.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(search_wrap, text="🔍", font=ctk.CTkFont(size=13),
+        ctk.CTkLabel(search_wrap, text="⌕", font=ctk.CTkFont(size=13),
                      text_color=CLR_MUTED, width=30).grid(row=0, column=0, padx=(10, 2), pady=9)
         self.search_var = ctk.StringVar()
         self.search_var.trace_add("write", lambda *_: self._filter())
@@ -112,7 +370,7 @@ class MedicacionScreen(ctk.CTkFrame):
                       ).grid(row=0, column=2, padx=(8, 28), pady=14)
         
         # Botón de Reportes
-        ctk.CTkButton(bar, text="📊 Reportes",
+        ctk.CTkButton(bar, text="▤ Reportes",
                       fg_color=CLR_AMBER, hover_color=CLR_AMBER_LIGHT,
                       text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
                       corner_radius=10, height=38, command=self._open_report_modal,
@@ -126,10 +384,10 @@ class MedicacionScreen(ctk.CTkFrame):
         sf = ctk.CTkFrame(self, fg_color="transparent")
         sf.grid(row=1, column=0, sticky="ew", padx=24, pady=(18, 0))
         sf.grid_columnconfigure((0, 1, 2, 3), weight=1)
-        self._stat_total   = self._stat_card(sf, 0, "Total programadas", "0", "📋", CLR_SKY_DARK,   "#dbeafe")
-        self._stat_admin   = self._stat_card(sf, 1, "Administradas",     "0", "✅", CLR_GREEN_DARK, CLR_GREEN_LIGHT)
-        self._stat_vencida = self._stat_card(sf, 2, "Vencidas hoy",      "0", "⚠️", CLR_AMBER,      CLR_AMBER_LIGHT)
-        self._stat_omision = self._stat_card(sf, 3, "Omisiones",         "0", "🔴", CLR_RED,        CLR_RED_LIGHT)
+        self._stat_total   = self._stat_card(sf, 0, "Total programadas", "0", "▤", CLR_SKY_DARK,   "#dbeafe")
+        self._stat_admin   = self._stat_card(sf, 1, "Administradas",     "0", "✔", CLR_GREEN_DARK, CLR_GREEN_LIGHT)
+        self._stat_vencida = self._stat_card(sf, 2, "Vencidas hoy",      "0", "▲", CLR_AMBER,      CLR_AMBER_LIGHT)
+        self._stat_omision = self._stat_card(sf, 3, "Omisiones",         "0", "●", CLR_RED,        CLR_RED_LIGHT)
 
     def _stat_card(self, parent, col, title, value, icon, icon_color, icon_bg):
         card = ctk.CTkFrame(parent, fg_color=CLR_WHITE, corner_radius=14,
@@ -163,7 +421,7 @@ class MedicacionScreen(ctk.CTkFrame):
         ctk.CTkFrame(tab_bar, fg_color=CLR_BORDER, height=1).place(relx=0, rely=1.0, relwidth=1, anchor="sw")
 
         self._tab_list_btn = ctk.CTkButton(
-            tab_bar, text="📋  Lista",
+            tab_bar, text="▤  Lista",
             fg_color=CLR_WHITE, hover_color=CLR_SKY_LIGHT,
             text_color=CLR_SKY_XDARK, font=ctk.CTkFont(size=12, weight="bold"),
             corner_radius=0, height=46, width=140, border_width=0,
@@ -172,7 +430,7 @@ class MedicacionScreen(ctk.CTkFrame):
         self._tab_list_btn.pack(side="left")
 
         self._tab_alert_btn = ctk.CTkButton(
-            tab_bar, text="🔔  Alertas",
+            tab_bar, text="◈  Alertas",
             fg_color="transparent", hover_color=CLR_SKY_LIGHT,
             text_color=CLR_MUTED, font=ctk.CTkFont(size=12),
             corner_radius=0, height=46, width=140, border_width=0,
@@ -194,18 +452,20 @@ class MedicacionScreen(ctk.CTkFrame):
         if tab == self._current_tab:
             return
         self._current_tab = tab
+        # Preservar texto actual del botón de alertas (puede tener conteo)
+        alert_text = self._tab_alert_btn.cget("text")
         if tab == "lista":
             self._page_alertas.grid_remove()
             self._page_lista.grid(row=0, column=0, sticky="nsew")
             self._tab_list_btn.configure(fg_color=CLR_WHITE, text_color=CLR_SKY_XDARK,
                                          font=ctk.CTkFont(size=12, weight="bold"))
             self._tab_alert_btn.configure(fg_color="transparent", text_color=CLR_MUTED,
-                                          font=ctk.CTkFont(size=12))
+                                          font=ctk.CTkFont(size=12), text=alert_text)
         else:
             self._page_lista.grid_remove()
             self._page_alertas.grid(row=0, column=0, sticky="nsew")
             self._tab_alert_btn.configure(fg_color=CLR_WHITE, text_color=CLR_SKY_XDARK,
-                                          font=ctk.CTkFont(size=12, weight="bold"))
+                                          font=ctk.CTkFont(size=12, weight="bold"), text=alert_text)
             self._tab_list_btn.configure(fg_color="transparent", text_color=CLR_MUTED,
                                          font=ctk.CTkFont(size=12))
 
@@ -299,6 +559,13 @@ class MedicacionScreen(ctk.CTkFrame):
         self._stat_vencida.configure(text=str(vencida))
         self._stat_omision.configure(text=str(omision))
 
+        # Actualizar texto del botón Alertas con conteo
+        n_alertas = vencida + omision
+        if n_alertas > 0:
+            self._tab_alert_btn.configure(text=f"◈  Alertas  ({n_alertas})")
+        else:
+            self._tab_alert_btn.configure(text="◈  Alertas")
+
     def _filter(self):
         q = self.search_var.get().strip().lower()
         filtered = self._all_rows if not q else [
@@ -319,7 +586,7 @@ class MedicacionScreen(ctk.CTkFrame):
         if not rows:
             empty = ctk.CTkFrame(self._list_scroll, fg_color="transparent")
             empty.grid(row=0, column=0, pady=50)
-            ctk.CTkLabel(empty, text="💊", font=ctk.CTkFont(size=32)).pack()
+            ctk.CTkLabel(empty, text="⊕", font=ctk.CTkFont(size=32)).pack()
             ctk.CTkLabel(empty, text="Sin medicaciones registradas",
                          font=ctk.CTkFont(size=14, weight="bold"), text_color=CLR_TEXT_SOFT).pack(pady=(6, 2))
             ctk.CTkLabel(empty, text="Usa el boton '+ Nueva medicacion' para agregar",
@@ -369,7 +636,7 @@ class MedicacionScreen(ctk.CTkFrame):
 
             if administrada:
                 btn_app = ctk.CTkButton(
-                    rf, text="✓ Aplicada",
+                    rf, text="✔ Aplicada",
                     fg_color=CLR_GREEN_LIGHT, hover_color="#bbf7d0",
                     text_color=CLR_GREEN_DARK,
                     font=ctk.CTkFont(size=10, weight="bold"),
@@ -411,7 +678,7 @@ class MedicacionScreen(ctk.CTkFrame):
         dialog.resizable(False, False)
         _center(dialog, 400, 215)
 
-        ctk.CTkLabel(dialog, text="↩️", font=ctk.CTkFont(size=36)).pack(pady=(20, 4))
+        ctk.CTkLabel(dialog, text="↩", font=ctk.CTkFont(size=36)).pack(pady=(20, 4))
         ctk.CTkLabel(dialog, text="Revertir aplicacion?",
                      font=ctk.CTkFont(size=15, weight="bold"), text_color=CLR_TEXT).pack()
         ctk.CTkLabel(dialog,
@@ -473,7 +740,7 @@ class MedicacionScreen(ctk.CTkFrame):
         if not alertas:
             empty = ctk.CTkFrame(self._alerts_scroll, fg_color="transparent")
             empty.grid(row=0, column=0, pady=60)
-            ctk.CTkLabel(empty, text="✅", font=ctk.CTkFont(size=40)).pack()
+            ctk.CTkLabel(empty, text="✔", font=ctk.CTkFont(size=40)).pack()
             ctk.CTkLabel(empty, text="Sin alertas activas",
                          font=ctk.CTkFont(size=15, weight="bold"), text_color="#16a34a").pack(pady=(6, 2))
             ctk.CTkLabel(empty, text="Todas las medicaciones estan al dia",
@@ -496,7 +763,7 @@ class MedicacionScreen(ctk.CTkFrame):
                 administrada = self._get_adm(row)
 
             estado_txt, estado_bg, estado_fg = _estado(fecha, horario, administrada)
-            icon = "⚠️" if estado_txt == "Vencida" else "🔴"
+            icon = "▲" if estado_txt == "Vencida" else "●"
 
             card = ctk.CTkFrame(self._alerts_scroll, fg_color=CLR_WHITE,
                                 corner_radius=12, border_width=1,
@@ -563,7 +830,7 @@ class MedicacionScreen(ctk.CTkFrame):
         hdr.grid(row=0, column=0, sticky="ew")
         hdr.grid_propagate(False)
         ctk.CTkLabel(hdr,
-                     text="💊  Nueva medicacion" if not edit else "💊  Editar medicacion",
+                     text="⊕  Nueva medicacion" if not edit else "⊕  Editar medicacion",
                      font=ctk.CTkFont(size=16, weight="bold"),
                      text_color=CLR_WHITE).pack(side="left", padx=24, pady=14)
         ctk.CTkLabel(hdr, text="Todos los campos son obligatorios",
@@ -633,12 +900,29 @@ class MedicacionScreen(ctk.CTkFrame):
         if edit and med.get("dosis"):
             entry_dosis.insert(0, med["dosis"])
 
+        # ── Fecha con calendario ──
         grp_fecha = _field(body, "Fecha", 2, 0)
-        entry_fecha = ctk.CTkEntry(grp_fecha, fg_color=CLR_BG, border_color=CLR_BORDER,
-                                   text_color=CLR_TEXT, height=36, corner_radius=8)
-        entry_fecha.pack(fill="x")
         fecha_val = med.get("fecha", date.today().isoformat()) if edit else date.today().isoformat()
-        entry_fecha.insert(0, fecha_val)
+        fecha_var = ctk.StringVar(value=fecha_val)
+        fecha_frame = ctk.CTkFrame(grp_fecha, fg_color=CLR_WHITE, corner_radius=8,
+                                   border_width=1, border_color=CLR_BORDER, height=38)
+        fecha_frame.pack(fill="x")
+        fecha_frame.pack_propagate(False)
+        fecha_entry = ctk.CTkEntry(fecha_frame, textvariable=fecha_var, height=36,
+                                   fg_color="transparent", border_width=0,
+                                   text_color=CLR_TEXT, font=ctk.CTkFont(size=12))
+        fecha_entry.pack(side="left", fill="both", expand=True, padx=(10, 0))
+        fecha_icon = ctk.CTkButton(fecha_frame, text="▷", width=36, height=36,
+                                   fg_color="transparent", hover_color=CLR_SKY_LIGHT,
+                                   text_color=CLR_MUTED, corner_radius=8)
+        fecha_icon.pack(side="right", padx=(0, 2))
+        _cal_ref = [None]
+        def _open_cal(event=None):
+            if _cal_ref[0] and _cal_ref[0].winfo_exists(): return
+            def _on_date(d): fecha_var.set(d)
+            _cal_ref[0] = CalendarPicker(fecha_icon, fecha_var.get(), _on_date)
+        fecha_icon.configure(command=_open_cal)
+        fecha_entry.bind("<Button-1>", _open_cal)
 
         grp_enf = _field(body, "Enfermero / Doctor", 2, 1)
         combo_enf = ctk.CTkComboBox(grp_enf,
@@ -654,58 +938,94 @@ class MedicacionScreen(ctk.CTkFrame):
                 if v == med.get("id_enfermero"):
                     combo_enf.set(k); break
 
+        # ── Hora con selector de ruedas ──
         grp_hora = _field(body, "Horario", 3, 0, 2)
-
-        hora_init = "08"; min_init = "00"
+        hora_init = "09:00"
         if edit and med.get("horario"):
-            parts = str(med["horario"]).split(":")
-            if len(parts) >= 2:
-                hora_init = parts[0].zfill(2)
-                min_init  = parts[1].zfill(2)
+            hora_init = str(med["horario"])
+        try:
+            _h0, _m0 = int(hora_init.split(":")[0]), int(hora_init.split(":")[1])
+        except Exception:
+            _h0, _m0 = 9, 0
 
-        hora_var = ctk.StringVar(value=hora_init)
-        min_var  = ctk.StringVar(value=min_init)
-        horas_vals = [str(h).zfill(2) for h in range(24)]
-        mins_vals  = ["00","05","10","15","20","25","30","35","40","45","50","55"]
+        hora_frame = ctk.CTkFrame(grp_hora, fg_color=CLR_BG, corner_radius=10,
+                                  border_width=1, border_color=CLR_BORDER)
+        hora_frame.pack(anchor="w", fill="x", pady=(0, 4))
 
-        hora_wrap = ctk.CTkFrame(grp_hora, fg_color=CLR_BG, corner_radius=8,
-                                 border_width=1, border_color=CLR_BORDER)
-        hora_wrap.pack(anchor="w")
+        # ── Contenedor central del selector ──
+        picker_row = ctk.CTkFrame(hora_frame, fg_color="transparent")
+        picker_row.pack(pady=10, padx=16, anchor="w")
 
-        ctk.CTkLabel(hora_wrap, text="🕐", font=ctk.CTkFont(size=15),
-                     text_color=CLR_MUTED).pack(side="left", padx=(10, 6), pady=8)
+        def _spin_col(parent, init_val, max_val):
+            """Columna con ▲ display ▼. Devuelve lista mutable [val]."""
+            _val = [init_val]
 
-        hora_sel = ctk.CTkOptionMenu(hora_wrap, values=horas_vals, variable=hora_var,
-                                     fg_color=CLR_BG, button_color=CLR_SKY_DARK,
-                                     button_hover_color=CLR_SKY_XDARK,
-                                     text_color=CLR_TEXT, dropdown_fg_color=CLR_WHITE,
-                                     dropdown_text_color=CLR_TEXT,
-                                     font=ctk.CTkFont(size=14, weight="bold"),
-                                     width=72, height=34, corner_radius=6)
-        hora_sel.pack(side="left", pady=6)
+            col = ctk.CTkFrame(parent, fg_color="transparent")
+            col.pack(side="left")
 
-        ctk.CTkLabel(hora_wrap, text=":",
-                     font=ctk.CTkFont(size=18, weight="bold"),
-                     text_color=CLR_TEXT_SOFT).pack(side="left", padx=3)
+            btn_up = ctk.CTkButton(col, text="▲", width=52, height=22,
+                                   fg_color=CLR_SKY_LIGHT, hover_color="#bae6fd",
+                                   text_color=CLR_SKY_XDARK,
+                                   font=ctk.CTkFont(size=10, weight="bold"),
+                                   corner_radius=6, border_width=0)
+            btn_up.pack(pady=(0, 2))
 
-        min_sel = ctk.CTkOptionMenu(hora_wrap, values=mins_vals, variable=min_var,
-                                    fg_color=CLR_BG, button_color=CLR_SKY_DARK,
-                                    button_hover_color=CLR_SKY_XDARK,
-                                    text_color=CLR_TEXT, dropdown_fg_color=CLR_WHITE,
-                                    dropdown_text_color=CLR_TEXT,
-                                    font=ctk.CTkFont(size=14, weight="bold"),
-                                    width=72, height=34, corner_radius=6)
-        min_sel.pack(side="left", pady=6)
+            display = ctk.CTkFrame(col, fg_color=CLR_WHITE, corner_radius=8,
+                                   border_width=2, border_color=CLR_SKY_DARK,
+                                   width=52, height=48)
+            display.pack()
+            display.pack_propagate(False)
+            lbl = ctk.CTkLabel(display, text=f"{init_val:02d}",
+                               font=ctk.CTkFont(size=22, weight="bold"),
+                               text_color=CLR_SKY_XDARK)
+            lbl.place(relx=0.5, rely=0.5, anchor="center")
 
-        preview_lbl = ctk.CTkLabel(hora_wrap,
-                                   text=f"  {hora_init}:{min_init} hrs",
-                                   font=ctk.CTkFont(size=12), text_color=CLR_MUTED)
-        preview_lbl.pack(side="left", padx=(8, 12))
+            btn_dn = ctk.CTkButton(col, text="▼", width=52, height=22,
+                                   fg_color=CLR_SKY_LIGHT, hover_color="#bae6fd",
+                                   text_color=CLR_SKY_XDARK,
+                                   font=ctk.CTkFont(size=10, weight="bold"),
+                                   corner_radius=6, border_width=0)
+            btn_dn.pack(pady=(2, 0))
 
-        def _update_preview(*_):
-            preview_lbl.configure(text=f"  {hora_var.get()}:{min_var.get()} hrs")
-        hora_var.trace_add("write", _update_preview)
-        min_var.trace_add("write", _update_preview)
+            def _up():
+                _val[0] = (_val[0] + 1) % (max_val + 1)
+                lbl.configure(text=f"{_val[0]:02d}")
+            def _dn():
+                _val[0] = (_val[0] - 1) % (max_val + 1)
+                lbl.configure(text=f"{_val[0]:02d}")
+
+            btn_up.configure(command=_up)
+            btn_dn.configure(command=_dn)
+            return _val
+
+        _hora_h = _spin_col(picker_row, _h0, 23)
+
+        # Separador ":"
+        sep_col = ctk.CTkFrame(picker_row, fg_color="transparent")
+        sep_col.pack(side="left", padx=6)
+        ctk.CTkFrame(sep_col, fg_color="transparent", height=22).pack()  # spacer top
+        ctk.CTkLabel(sep_col, text=":",
+                     font=ctk.CTkFont(size=26, weight="bold"),
+                     text_color=CLR_SKY_DARK).pack()
+
+        _hora_m = _spin_col(picker_row, _m0, 59)
+
+        # Etiquetas HH / MM debajo
+        lbl_row = ctk.CTkFrame(picker_row, fg_color="transparent")
+        # (las etiquetas van directamente bajo cada columna en picker_row)
+
+        # Etiqueta indicativa al lado
+        hint_col = ctk.CTkFrame(picker_row, fg_color="transparent")
+        hint_col.pack(side="left", padx=(14, 0))
+        ctk.CTkFrame(hint_col, fg_color="transparent", height=22).pack()
+        ctk.CTkLabel(hint_col, text="hh",
+                     font=ctk.CTkFont(size=9), text_color=CLR_MUTED).pack()
+        ctk.CTkFrame(hint_col, fg_color="transparent", height=48).pack()
+        ctk.CTkLabel(hint_col, text="mm",
+                     font=ctk.CTkFont(size=9), text_color=CLR_MUTED).pack()
+
+        def _get_hora():
+            return f"{_hora_h[0]:02d}:{_hora_m[0]:02d}"
 
         def _show_alert(msg):
             alert = ctk.CTkToplevel(win)
@@ -714,7 +1034,7 @@ class MedicacionScreen(ctk.CTkFrame):
             alert.configure(fg_color=CLR_WHITE)
             alert.resizable(False, False)
             _center(alert, 340, 170)
-            ctk.CTkLabel(alert, text="⚠️", font=ctk.CTkFont(size=34)).pack(pady=(16, 2))
+            ctk.CTkLabel(alert, text="▲", font=ctk.CTkFont(size=34)).pack(pady=(16, 2))
             ctk.CTkLabel(alert, text="Campo requerido",
                          font=ctk.CTkFont(size=14, weight="bold"),
                          text_color=CLR_TEXT).pack()
@@ -733,8 +1053,8 @@ class MedicacionScreen(ctk.CTkFrame):
             res_id  = res_opts.get(res_key)
             enf_id  = enf_opts.get(enf_key)
             dosis   = entry_dosis.get().strip()
-            fecha   = entry_fecha.get().strip()
-            horario = f"{hora_var.get()}:{min_var.get()}"
+            fecha   = fecha_var.get().strip()
+            horario = _get_hora()
 
             if not res_id:  _show_alert("Debes seleccionar un residente"); return
             if not dosis:   _show_alert("La dosis es obligatoria"); return
@@ -763,7 +1083,7 @@ class MedicacionScreen(ctk.CTkFrame):
                       text_color=CLR_TEXT_SOFT, hover_color="#f1f5f9",
                       corner_radius=8, height=36, command=win.destroy,
                       ).grid(row=0, column=0, padx=(16, 6), pady=12, sticky="ew")
-        ctk.CTkButton(btn_bar, text="💾  Guardar",
+        ctk.CTkButton(btn_bar, text="▦  Guardar",
                       fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
                       text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
                       corner_radius=8, height=36, command=_save,
@@ -791,7 +1111,7 @@ class MedicacionScreen(ctk.CTkFrame):
         dialog.resizable(False, False)
         _center(dialog, 380, 200)
 
-        ctk.CTkLabel(dialog, text="⚠️", font=ctk.CTkFont(size=36)).pack(pady=(24, 4))
+        ctk.CTkLabel(dialog, text="▲", font=ctk.CTkFont(size=36)).pack(pady=(24, 4))
         ctk.CTkLabel(dialog, text="Eliminar esta medicacion?",
                      font=ctk.CTkFont(size=15, weight="bold"), text_color=CLR_TEXT).pack()
         ctk.CTkLabel(dialog, text="Esta accion es permanente y no se puede deshacer.",
@@ -835,7 +1155,7 @@ class MedicacionScreen(ctk.CTkFrame):
         x = self.winfo_rootx() + self.winfo_width() - 320
         y = self.winfo_rooty() + self.winfo_height() - 72
         t.geometry(f"300x48+{x}+{y}")
-        ctk.CTkLabel(t, text=("❌  " if error else "✅  ") + msg,
+        ctk.CTkLabel(t, text=("✖  " if error else "✔  ") + msg,
                      font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_WHITE).pack(fill="both", expand=True, padx=14)
         t.after(2800, t.destroy)
@@ -844,49 +1164,120 @@ class MedicacionScreen(ctk.CTkFrame):
         
     def _open_report_modal(self):
         modal = ctk.CTkToplevel(self)
-        modal.title("Generar Reporte")
-        _center(modal, 420, 320)
+        modal.title("Generar Reporte de Medicaciones")
+        _center(modal, 460, 420)
         modal.grab_set()
+        modal.configure(fg_color=CLR_BG)
+        modal.resizable(False, False)
 
-        frame = ctk.CTkFrame(modal, fg_color=CLR_WHITE, corner_radius=12)
-        frame.pack(fill="both", expand=True, padx=20, pady=20)
+        # Header
+        hdr = ctk.CTkFrame(modal, fg_color=CLR_SKY_DARK, corner_radius=0, height=60)
+        hdr.pack(fill="x")
+        hdr.pack_propagate(False)
+        ctk.CTkLabel(hdr, text="▤  Generar Reporte",
+                     font=ctk.CTkFont(size=16, weight="bold"),
+                     text_color=CLR_WHITE).pack(side="left", padx=24, pady=16)
+        ctk.CTkLabel(hdr, text="Filtra y exporta medicaciones",
+                     font=ctk.CTkFont(size=10), text_color="#bae6fd").pack(side="right", padx=20)
 
-        # Combobox de residentes
-        residentes = list({r.get("residente_nombre","") for r in self._all_rows if isinstance(r,dict)})
-        self.residente_var = ctk.StringVar()
-        ctk.CTkLabel(frame, text="Residente:", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(4,0))
-        ctk.CTkComboBox(frame, values=residentes or ["Todos"], variable=self.residente_var).pack(fill="x", pady=6)
+        # Cuerpo
+        frame = ctk.CTkFrame(modal, fg_color=CLR_WHITE, corner_radius=12,
+                             border_width=1, border_color=CLR_BORDER)
+        frame.pack(fill="both", expand=True, padx=20, pady=16)
 
-        # Calendarios de fechas
-        from tkcalendar import DateEntry
-        ctk.CTkLabel(frame, text="Fecha inicio:", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(4,0))
-        fecha_ini_widget = DateEntry(frame, date_pattern="yyyy-mm-dd")
-        fecha_ini_widget.pack(fill="x", pady=6)
+        def _lbl(text):
+            ctk.CTkLabel(frame, text=text,
+                         font=ctk.CTkFont(size=11, weight="bold"),
+                         text_color=CLR_TEXT_SOFT).pack(anchor="w", padx=20, pady=(12, 2))
 
-        ctk.CTkLabel(frame, text="Fecha fin:", font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(4,0))
-        fecha_fin_widget = DateEntry(frame, date_pattern="yyyy-mm-dd")
-        fecha_fin_widget.pack(fill="x", pady=6)
+        # ── Residente ──
+        _lbl("Residente")
+        residentes = sorted({r.get("residente_nombre","") for r in self._all_rows
+                             if isinstance(r, dict) and r.get("residente_nombre","")})
+        self.residente_var = ctk.StringVar(value="Todos")
+        combo_res = ctk.CTkComboBox(frame, values=["Todos"] + residentes,
+                                    variable=self.residente_var,
+                                    fg_color=CLR_BG, border_color=CLR_BORDER,
+                                    text_color=CLR_TEXT, button_color=CLR_SKY_DARK,
+                                    dropdown_fg_color=CLR_WHITE, dropdown_text_color=CLR_TEXT,
+                                    height=36, corner_radius=8)
+        combo_res.pack(fill="x", padx=20, pady=(0, 4))
 
-        # Botón generar
+        # ── Separador ──
+        ctk.CTkFrame(frame, fg_color=CLR_BORDER, height=1).pack(fill="x", padx=20, pady=(8, 4))
+
+        # ── Fechas en dos columnas ──
+        dates_row = ctk.CTkFrame(frame, fg_color="transparent")
+        dates_row.pack(fill="x", padx=20, pady=(4, 4))
+        dates_row.grid_columnconfigure((0, 1), weight=1)
+
+        def _date_field(parent, col, label, default_val):
+            grp = ctk.CTkFrame(parent, fg_color="transparent")
+            grp.grid(row=0, column=col, padx=(0, 8 if col == 0 else 0), sticky="ew")
+            ctk.CTkLabel(grp, text=label,
+                         font=ctk.CTkFont(size=11, weight="bold"),
+                         text_color=CLR_TEXT_SOFT).pack(anchor="w", pady=(0, 3))
+            var = ctk.StringVar(value=default_val)
+            wrap = ctk.CTkFrame(grp, fg_color=CLR_BG, corner_radius=8,
+                                border_width=1, border_color=CLR_BORDER, height=38)
+            wrap.pack(fill="x")
+            wrap.pack_propagate(False)
+            entry = ctk.CTkEntry(wrap, textvariable=var, height=36,
+                                 fg_color="transparent", border_width=0,
+                                 text_color=CLR_TEXT, font=ctk.CTkFont(size=12))
+            entry.pack(side="left", fill="both", expand=True, padx=(10, 0))
+            icon_btn = ctk.CTkButton(wrap, text="▷", width=34, height=34,
+                                     fg_color="transparent", hover_color=CLR_SKY_LIGHT,
+                                     text_color=CLR_MUTED, corner_radius=6)
+            icon_btn.pack(side="right", padx=(0, 2))
+            _cal = [None]
+            def _open_cal(event=None):
+                if _cal[0] and _cal[0].winfo_exists(): return
+                def _on(d): var.set(d)
+                _cal[0] = CalendarPicker(icon_btn, var.get(), _on)
+            icon_btn.configure(command=_open_cal)
+            entry.bind("<Button-1>", _open_cal)
+            return var
+
+        fecha_ini_var = _date_field(dates_row, 0, "▷  Fecha inicio",
+                                    date.today().replace(day=1).isoformat())
+        fecha_fin_var = _date_field(dates_row, 1, "▷  Fecha fin",
+                                    date.today().isoformat())
+
+        # ── Info ──
+        info = ctk.CTkFrame(frame, fg_color=CLR_SKY_XLIGHT, corner_radius=8,
+                            border_width=1, border_color="#bae6fd")
+        info.pack(fill="x", padx=20, pady=(12, 4))
+        ctk.CTkLabel(info, text="ℹ️  El reporte incluirá todas las medicaciones en el rango de fechas seleccionado.",
+                     font=ctk.CTkFont(size=10), text_color=CLR_SKY_XDARK,
+                     wraplength=380, justify="left").pack(anchor="w", padx=12, pady=8)
+
+        # ── Botones ──
+        ctk.CTkFrame(frame, fg_color=CLR_BORDER, height=1).pack(fill="x", padx=20, pady=(8, 0))
+        btn_row = ctk.CTkFrame(frame, fg_color="transparent")
+        btn_row.pack(fill="x", padx=20, pady=(12, 16))
+        btn_row.grid_columnconfigure((0, 1), weight=1)
+
+        ctk.CTkButton(btn_row, text="Cancelar",
+                      fg_color=CLR_WHITE, border_width=1, border_color=CLR_BORDER,
+                      text_color=CLR_TEXT_SOFT, hover_color="#f1f5f9",
+                      corner_radius=8, height=38,
+                      command=modal.destroy
+                      ).grid(row=0, column=0, padx=(0, 6), sticky="ew")
+
         def _generar():
-            # primero obtengo los valores
-            fecha_inicio = fecha_ini_widget.get_date().isoformat()
-            fecha_fin    = fecha_fin_widget.get_date().isoformat()
+            fecha_inicio = fecha_ini_var.get().strip()
+            fecha_fin    = fecha_fin_var.get().strip()
             residente    = self.residente_var.get()
-
-            # cierro el modal de consulta
             modal.destroy()
-
-            # abro el reporte con los valores guardados
             self._open_report_result(residente, fecha_inicio, fecha_fin)
 
-
-        ctk.CTkButton(frame, text="Generar Reporte",
-                    fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
-                    text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
-                    corner_radius=10, height=38,
-                    command=_generar
-                    ).pack(pady=(12,0))
+        ctk.CTkButton(btn_row, text="▤  Generar Reporte",
+                      fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
+                      text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
+                      corner_radius=8, height=38,
+                      command=_generar
+                      ).grid(row=0, column=1, padx=(6, 0), sticky="ew")
 
 
 
@@ -902,7 +1293,7 @@ class MedicacionScreen(ctk.CTkFrame):
         # Header institucional
         hdr = ctk.CTkFrame(win, fg_color=CLR_SKY_DARK, corner_radius=0, height=70)
         hdr.pack(fill="x")
-        ctk.CTkLabel(hdr, text="🏥  Sistema de Gestión - Asilo",
+        ctk.CTkLabel(hdr, text="✚  Sistema de Gestión de Asilo - CREAN",
                     font=ctk.CTkFont(size=18, weight="bold"),
                     text_color=CLR_WHITE).pack(side="left", padx=24, pady=20)
 
@@ -975,6 +1366,14 @@ class MedicacionScreen(ctk.CTkFrame):
 
 
     def _export_pdf(self, rows, residente, fecha_ini, fecha_fin, parent_win=None):
+        # Verificar/instalar reportlab automáticamente
+        try:
+            import reportlab
+        except ImportError:
+            import subprocess, sys
+            self._toast("Instalando reportlab, espera...", error=False)
+            self.update()
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "reportlab", "--quiet"])
         try:
             file_path = filedialog.asksaveasfilename(
                 defaultextension=".pdf",
@@ -984,84 +1383,262 @@ class MedicacionScreen(ctk.CTkFrame):
             if not file_path:
                 return
 
-            pdf = FPDF(orientation="P", unit="mm", format="A4")
-            pdf.add_page()
+            from reportlab.lib.pagesizes import A4, landscape
+            from reportlab.lib import colors
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import mm, cm
+            from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                            Table, TableStyle, HRFlowable)
+            from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
-            # ✅ Márgenes y salto automático
-            pdf.set_auto_page_break(auto=True, margin=15)
-            pdf.set_margins(10, 10, 10)
+            # ── Colores corporativos ──
+            C_BLUE      = colors.HexColor("#0ea5e9")
+            C_BLUE_DARK = colors.HexColor("#0284c7")
+            C_BLUE_LITE = colors.HexColor("#e0f2fe")
+            C_GREEN     = colors.HexColor("#16a34a")
+            C_GREEN_L   = colors.HexColor("#dcfce7")
+            C_RED       = colors.HexColor("#ef4444")
+            C_RED_L     = colors.HexColor("#fee2e2")
+            C_AMBER     = colors.HexColor("#f59e0b")
+            C_AMBER_L   = colors.HexColor("#fef3c7")
+            C_GRAY      = colors.HexColor("#64748b")
+            C_GRAY_L    = colors.HexColor("#f8fafc")
+            C_DARK      = colors.HexColor("#0f172a")
+            C_WHITE     = colors.white
 
-            page_width = pdf.w - 20  # ancho útil
+            def safe(text):
+                if text is None: return "-"
+                return str(text).replace("\n", " ").replace("\r", " ").strip() or "-"
 
-            # ✅ Función para limpiar texto
-            def _safe_text(text):
-                if text is None:
-                    return "-"
-                return str(text).replace("\n", " ").replace("\r", " ")
+            # ── Estilos de párrafo ──
+            styles = getSampleStyleSheet()
+            st_title = ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=20,
+                                      textColor=C_BLUE_DARK, spaceAfter=2, alignment=TA_LEFT)
+            st_sub   = ParagraphStyle("sub",   fontName="Helvetica", fontSize=10,
+                                      textColor=C_GRAY, spaceAfter=8, alignment=TA_LEFT)
+            st_meta  = ParagraphStyle("meta",  fontName="Helvetica", fontSize=9,
+                                      textColor=C_DARK, leading=13)
+            st_meta_b= ParagraphStyle("metab", fontName="Helvetica-Bold", fontSize=9,
+                                      textColor=C_DARK, leading=13)
+            st_footer= ParagraphStyle("foot",  fontName="Helvetica-Oblique", fontSize=8,
+                                      textColor=C_GRAY, alignment=TA_CENTER)
+            st_cell  = ParagraphStyle("cell",  fontName="Helvetica", fontSize=9,
+                                      textColor=C_DARK, leading=12, wordWrap="CJK")
+            st_cell_b= ParagraphStyle("cellb", fontName="Helvetica-Bold", fontSize=9,
+                                      textColor=C_DARK, leading=12)
 
-            # Logo opcional
-            try:
-                pdf.image("logo.png", x=10, y=8, w=20)
-            except:
-                pass
-
-            # Encabezado
-            pdf.set_font("Arial", "B", 16)
-            pdf.set_text_color(14, 165, 233)
-            pdf.cell(0, 10, "Sistema de Gestión - Asilo", ln=True, align="C")
-            pdf.ln(5)
-
-            # Criterios
-            pdf.set_font("Arial", "", 12)
-            pdf.set_text_color(0, 0, 0)
-
-            pdf.multi_cell(page_width, 8, f"Residente: {_safe_text(residente) if residente else 'Todos'}")
-            pdf.set_x(10)
-            pdf.multi_cell(page_width, 8, f"Fechas consultadas: {_safe_text(fecha_ini)} a {_safe_text(fecha_fin)}")
-            pdf.set_x(10)
-            pdf.multi_cell(page_width, 8, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-            pdf.ln(5)
-
-            # Datos como párrafos
-            pdf.set_font("Arial", "", 11)
-
-            for idx, row in enumerate(rows, start=1):
-                res_name = _safe_text(row.get("residente_nombre"))
-                dosis    = _safe_text(row.get("dosis"))
-                fecha    = _safe_text(row.get("fecha"))
-                horario  = _safe_text(row.get("horario"))
-                enf_name = _safe_text(row.get("enfermero_nombre"))
-
-                estado_txt, _, _ = _estado(fecha, horario, self._get_adm(row))
-                estado_txt = _safe_text(estado_txt)
-
-                pdf.set_text_color(0, 0, 0)
-
-                pdf.multi_cell(page_width, 8, f"Registro {idx}:")
-                pdf.set_x(10)
-                pdf.multi_cell(page_width, 8, f"Residente: {res_name}")
-                pdf.set_x(10)
-                pdf.multi_cell(page_width, 8, f"Dosis: {dosis}")
-                pdf.set_x(10)
-                pdf.multi_cell(page_width, 8, f"Fecha: {fecha}")
-                pdf.set_x(10)
-                pdf.multi_cell(page_width, 8, f"Horario: {horario}")
-                pdf.set_x(10)
-                pdf.multi_cell(page_width, 8, f"Enfermero/Doctor: {enf_name}")
-                pdf.set_x(10)
-                pdf.multi_cell(page_width, 8, f"Estado: {estado_txt}")
-                pdf.ln(4)
-
-            # Pie
-            pdf.ln(5)
-            pdf.set_font("Arial", "I", 9)
-            pdf.multi_cell(
-                page_width,
-                8,
-                "Este reporte es generado automáticamente por el Sistema de Gestión - Asilo.\nConfidencial - Uso interno."
+            # ── Documento ──
+            doc = SimpleDocTemplate(
+                file_path,
+                pagesize=A4,
+                leftMargin=1.8*cm, rightMargin=1.8*cm,
+                topMargin=1.5*cm, bottomMargin=2*cm,
+                title="Reporte de Medicaciones",
+                author="Sistema de Gestión de Asilo - CREAN"
             )
 
-            pdf.output(file_path)
+            story = []
+
+            # ── Cabecera ──
+            page_w = A4[0] - 1.8*cm*2
+            header_data = [[
+                Paragraph("Sistema de Gestión de Asilo - CREAN", ParagraphStyle(
+                    "hd", fontName="Helvetica-Bold", fontSize=13, textColor=C_WHITE)),
+                Paragraph(f"Generado: {datetime.now().strftime('%d/%m/%Y  %H:%M')}",
+                          ParagraphStyle("hd2", fontName="Helvetica", fontSize=9,
+                                         textColor=colors.HexColor("#bae6fd"), alignment=TA_RIGHT))
+            ]]
+            header_tbl = Table(header_data, colWidths=[page_w*0.6, page_w*0.4])
+            header_tbl.setStyle(TableStyle([
+                ("BACKGROUND",   (0, 0), (-1, -1), C_BLUE_DARK),
+                ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING",  (0, 0), (-1, -1), 16),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 16),
+                ("TOPPADDING",   (0, 0), (-1, -1), 12),
+                ("BOTTOMPADDING",(0, 0), (-1, -1), 12),
+            ]))
+            story.append(header_tbl)
+            story.append(Spacer(1, 14))
+
+            # ── Título y subtítulo (sin empalme) ──
+            story.append(Paragraph("Reporte de Medicaciones", st_title))
+            story.append(Spacer(1, 10))
+            story.append(Paragraph("Control y seguimiento de medicamentos programados", st_sub))
+            story.append(HRFlowable(width="100%", thickness=1.5, color=C_BLUE, spaceBefore=6, spaceAfter=10))
+
+            # ── Bloque de criterios — filas separadas, bien alineadas ──
+            res_txt  = safe(residente) if residente and residente != "Todos" else "Todos los residentes"
+            per_txt  = f"{safe(fecha_ini)}  →  {safe(fecha_fin)}"
+            tot_txt  = str(len(rows))
+
+            st_lbl = ParagraphStyle("lbl", fontName="Helvetica-Bold", fontSize=9,
+                                    textColor=C_BLUE_DARK, leading=14)
+            st_val = ParagraphStyle("val", fontName="Helvetica", fontSize=9,
+                                    textColor=C_DARK, leading=14)
+
+            crit_inner = Table([
+                [Paragraph("Residente:",       st_lbl), Paragraph(res_txt, st_val),
+                 Paragraph("Período:",         st_lbl), Paragraph(per_txt, st_val),
+                 Paragraph("Total registros:", st_lbl), Paragraph(tot_txt, st_val)],
+            ], colWidths=[page_w*0.13, page_w*0.24, page_w*0.10, page_w*0.29, page_w*0.14, page_w*0.10])
+            crit_inner.setStyle(TableStyle([
+                ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING",    (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+            ]))
+
+            crit_tbl = Table(
+                [[Paragraph("Criterios del reporte", ParagraphStyle(
+                    "cr", fontName="Helvetica-Bold", fontSize=10, textColor=C_BLUE_DARK,
+                    spaceAfter=4))],
+                 [crit_inner]],
+                colWidths=[page_w]
+            )
+            crit_tbl.setStyle(TableStyle([
+                ("BACKGROUND",    (0, 0), (-1, -1), C_BLUE_LITE),
+                ("BOX",           (0, 0), (-1, -1), 1, colors.HexColor("#7dd3fc")),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 12),
+                ("RIGHTPADDING",  (0, 0), (-1, -1), 12),
+                ("TOPPADDING",    (0, 0), (0, 0),   10),
+                ("BOTTOMPADDING", (0, 0), (0, 0),   2),
+                ("TOPPADDING",    (0, 1), (-1, -1),  4),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 10),
+            ]))
+            story.append(crit_tbl)
+            story.append(Spacer(1, 14))
+
+            # ── Tabla principal ──
+            col_heads = ["#", "Residente", "Dosis / Medicamento", "Fecha", "Horario",
+                         "Enfermero / Doctor", "Estado"]
+            col_w = [0.6*cm, 3.2*cm, 4.4*cm, 2*cm, 1.8*cm, 3.4*cm, 2.2*cm]
+
+            head_style = ParagraphStyle("th", fontName="Helvetica-Bold", fontSize=8,
+                                        textColor=C_WHITE, alignment=TA_CENTER)
+            table_data = [[Paragraph(h, head_style) for h in col_heads]]
+
+            for idx, row in enumerate(rows, start=1):
+                res_name = safe(row.get("residente_nombre") if isinstance(row, dict) else row[5])
+                dosis    = safe(row.get("dosis")            if isinstance(row, dict) else row[3])
+                fecha    = safe(row.get("fecha")            if isinstance(row, dict) else row[1])
+                horario  = safe(row.get("horario")          if isinstance(row, dict) else row[2])
+                enf_name = safe(row.get("enfermero_nombre") if isinstance(row, dict) else (row[7] if len(row) > 7 else "-"))
+                adm      = self._get_adm(row)
+                estado_txt, _, _ = _estado(fecha, horario, adm)
+
+                # Color de fila según estado
+                row_bg = C_WHITE if idx % 2 == 0 else C_GRAY_L
+
+                # Badge de estado
+                badge_colors = {
+                    "Administrada": (C_GREEN, C_GREEN_L),
+                    "Programada":   (C_GREEN, C_GREEN_L),
+                    "Vencida":      (C_AMBER, C_AMBER_L),
+                    "Omision":      (C_RED,   C_RED_L),
+                }
+                est_fg, est_bg = badge_colors.get(estado_txt, (C_GRAY, C_GRAY_L))
+
+                est_para = Paragraph(estado_txt, ParagraphStyle(
+                    "est", fontName="Helvetica-Bold", fontSize=8,
+                    textColor=est_fg, alignment=TA_CENTER))
+
+                table_data.append([
+                    Paragraph(str(idx), ParagraphStyle("num", fontName="Helvetica", fontSize=8,
+                                                        textColor=C_GRAY, alignment=TA_CENTER)),
+                    Paragraph(res_name, st_cell),
+                    Paragraph(dosis,    st_cell),
+                    Paragraph(fecha,    ParagraphStyle("fc", fontName="Helvetica", fontSize=8,
+                                                       textColor=C_DARK, alignment=TA_CENTER)),
+                    Paragraph(horario,  ParagraphStyle("hc", fontName="Helvetica-Bold", fontSize=9,
+                                                       textColor=C_BLUE_DARK, alignment=TA_CENTER)),
+                    Paragraph(enf_name, st_cell),
+                    est_para,
+                ])
+
+            tbl = Table(table_data, colWidths=col_w, repeatRows=1)
+
+            # Estilo base
+            tbl_style = [
+                # Cabecera
+                ("BACKGROUND",    (0, 0), (-1, 0), C_BLUE_DARK),
+                ("TEXTCOLOR",     (0, 0), (-1, 0), C_WHITE),
+                ("ALIGN",         (0, 0), (-1, 0), "CENTER"),
+                ("TOPPADDING",    (0, 0), (-1, 0), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                # Filas de datos
+                ("VALIGN",        (0, 1), (-1, -1), "MIDDLE"),
+                ("TOPPADDING",    (0, 1), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
+                # Grid
+                ("GRID",          (0, 0), (-1, -1), 0.4, colors.HexColor("#e2e8f0")),
+                ("LINEBELOW",     (0, 0), (-1, 0), 1.5, C_BLUE),
+                ("ROUNDEDCORNERS", [4, 4, 4, 4]),
+            ]
+            # Filas alternadas
+            for i in range(1, len(table_data)):
+                bg = C_WHITE if i % 2 == 0 else C_GRAY_L
+                tbl_style.append(("BACKGROUND", (0, i), (-1, i), bg))
+                # Color del badge de estado
+                estado_val = rows[i-1].get("fecha","") if isinstance(rows[i-1], dict) else rows[i-1][1]
+                horario_v  = rows[i-1].get("horario","") if isinstance(rows[i-1], dict) else rows[i-1][2]
+                adm_v      = self._get_adm(rows[i-1])
+                est, _, _  = _estado(str(estado_val), str(horario_v), adm_v)
+                _, est_bg  = badge_colors.get(est, (C_GRAY, C_GRAY_L))
+                tbl_style.append(("BACKGROUND", (6, i), (6, i), est_bg))
+
+            tbl.setStyle(TableStyle(tbl_style))
+            story.append(tbl)
+            story.append(Spacer(1, 16))
+
+            # ── Resumen estadístico ──
+            adm_count  = sum(1 for r in rows if self._get_adm(r))
+            prog_count = sum(1 for r in rows if _estado(
+                r.get("fecha","") if isinstance(r,dict) else r[1],
+                r.get("horario","") if isinstance(r,dict) else r[2],
+                self._get_adm(r))[0] == "Programada")
+            venc_count = sum(1 for r in rows if _estado(
+                r.get("fecha","") if isinstance(r,dict) else r[1],
+                r.get("horario","") if isinstance(r,dict) else r[2],
+                self._get_adm(r))[0] == "Vencida")
+            omis_count = sum(1 for r in rows if _estado(
+                r.get("fecha","") if isinstance(r,dict) else r[1],
+                r.get("horario","") if isinstance(r,dict) else r[2],
+                self._get_adm(r))[0] == "Omision")
+
+            st_stat_lbl = ParagraphStyle("sl", fontName="Helvetica", fontSize=9, textColor=C_GRAY, alignment=TA_CENTER)
+            st_stat_val = ParagraphStyle("sv", fontName="Helvetica-Bold", fontSize=16, textColor=C_DARK, alignment=TA_CENTER)
+
+            stats_data = [[
+                Paragraph(f"<font color='#0ea5e9' size=18><b>{len(rows)}</b></font><br/><font color='#64748b' size=8>Total</font>", ParagraphStyle("sv2", alignment=TA_CENTER, leading=20)),
+                Paragraph(f"<font color='#16a34a' size=18><b>{adm_count}</b></font><br/><font color='#64748b' size=8>Administradas</font>", ParagraphStyle("sv3", alignment=TA_CENTER, leading=20)),
+                Paragraph(f"<font color='#22c55e' size=18><b>{prog_count}</b></font><br/><font color='#64748b' size=8>Programadas</font>", ParagraphStyle("sv4", alignment=TA_CENTER, leading=20)),
+                Paragraph(f"<font color='#f59e0b' size=18><b>{venc_count}</b></font><br/><font color='#64748b' size=8>Vencidas</font>", ParagraphStyle("sv5", alignment=TA_CENTER, leading=20)),
+                Paragraph(f"<font color='#ef4444' size=18><b>{omis_count}</b></font><br/><font color='#64748b' size=8>Omisiones</font>", ParagraphStyle("sv6", alignment=TA_CENTER, leading=20)),
+            ]]
+            stats_tbl = Table(stats_data, colWidths=["20%","20%","20%","20%","20%"])
+            stats_tbl.setStyle(TableStyle([
+                ("BACKGROUND",   (0, 0), (-1, -1), C_BLUE_LITE),
+                ("BOX",          (0, 0), (-1, -1), 1, colors.HexColor("#7dd3fc")),
+                ("INNERGRID",    (0, 0), (-1, -1), 0.5, colors.HexColor("#bae6fd")),
+                ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING",   (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING",(0, 0), (-1, -1), 10),
+                ("ROUNDEDCORNERS", [6, 6, 6, 6]),
+            ]))
+            story.append(stats_tbl)
+            story.append(Spacer(1, 18))
+
+            # ── Pie de página ──
+            story.append(HRFlowable(width="100%", thickness=0.8, color=C_BLUE, spaceBefore=4, spaceAfter=6))
+            story.append(Paragraph(
+                "Este reporte es generado automáticamente por el Sistema de Gestión de Asilo - CREAN.  "
+                "Documento confidencial — Uso interno exclusivo.",
+                st_footer))
+
+            doc.build(story)
             self._toast(f"Reporte exportado en:\n{file_path}")
 
             if parent_win:
