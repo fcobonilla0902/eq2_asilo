@@ -1,9 +1,27 @@
 import sqlite3
 import os
+import sys
 
-# La BD se guarda en la raíz del proyecto como asilo.db
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "asilo.db")
+
+def _get_app_dir() -> str:
+    """
+    Devuelve la carpeta donde vive la aplicación.
+
+    - Cuando se ejecuta como .exe empaquetado con PyInstaller,
+      sys.executable apunta al .exe y su carpeta ES la raíz del programa.
+    - Cuando se ejecuta como script normal (python main.py),
+      usamos la ruta de este archivo para localizar la raíz del proyecto.
+    """
+    if getattr(sys, "frozen", False):
+        # Ejecutando dentro de un .exe de PyInstaller
+        return os.path.dirname(sys.executable)
+    else:
+        # Ejecutando como script: subimos dos niveles desde db/connection.py
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+APP_DIR = _get_app_dir()
+DB_PATH = os.path.join(APP_DIR, "asilo.db")
 
 
 def get_connection() -> sqlite3.Connection:

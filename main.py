@@ -27,7 +27,7 @@ def main():
 
     # ── Ventana raíz temporal para el login ───────────────────────────────────
     root = ctk.CTk()
-    root.title("Sistema de Gestión — Asilo")
+    root.title("Sistema de Gestión de Asilo - CREAN")
     root.resizable(False, False)
     root.configure(fg_color="#f0f9ff")
 

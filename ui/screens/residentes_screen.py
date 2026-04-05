@@ -102,7 +102,7 @@ class ResidentesScreen(ctk.CTkFrame):
                                    border_width=1, border_color=CLR_BORDER)
         search_wrap.grid(row=0, column=1, padx=16, pady=14, sticky="ew")
         search_wrap.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(search_wrap, text="🔍", font=ctk.CTkFont(size=13),
+        ctk.CTkLabel(search_wrap, text="⌕", font=ctk.CTkFont(size=13),
                      text_color=CLR_MUTED, width=30).grid(row=0, column=0, padx=(10,2), pady=9)
         self.search_var = ctk.StringVar()
         self.search_var.trace_add("write", lambda *_: self._filter())
@@ -113,7 +113,7 @@ class ResidentesScreen(ctk.CTkFrame):
                      font=ctk.CTkFont(size=12), height=34,
                      ).grid(row=0, column=1, sticky="ew", padx=(0,8))
 
-        ctk.CTkButton(bar, text="＋  Nuevo residente",
+        ctk.CTkButton(bar, text="+  Nuevo residente",
                       fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
                       text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
                       corner_radius=10, height=38, command=self._open_form,
@@ -126,9 +126,9 @@ class ResidentesScreen(ctk.CTkFrame):
         sf = ctk.CTkFrame(self, fg_color="transparent")
         sf.grid(row=1, column=0, sticky="ew", padx=24, pady=(18,0))
         sf.grid_columnconfigure((0,1,2), weight=1)
-        self._stat_total = self._stat_card(sf, 0, "Total residentes", "0", "👥", CLR_SKY_DARK, "#dbeafe")
-        self._stat_con   = self._stat_card(sf, 1, "Con habitación",   "0", "🏠", "#10b981",   "#d1fae5")
-        self._stat_sin   = self._stat_card(sf, 2, "Sin habitación",   "0", "📋", CLR_AMBER,   CLR_AMBER_LIGHT)
+        self._stat_total = self._stat_card(sf, 0, "Total residentes", "0", "◈", CLR_SKY_DARK, "#dbeafe")
+        self._stat_con   = self._stat_card(sf, 1, "Con habitación",   "0", "▣", "#10b981",   "#d1fae5")
+        self._stat_sin   = self._stat_card(sf, 2, "Sin habitación",   "0", "▤", CLR_AMBER,   CLR_AMBER_LIGHT)
 
     def _stat_card(self, parent, col, title, value, icon, ic, ib):
         card = ctk.CTkFrame(parent, fg_color=CLR_WHITE, corner_radius=14,
@@ -243,7 +243,7 @@ class ResidentesScreen(ctk.CTkFrame):
         if not rows:
             e = ctk.CTkFrame(self._table, fg_color="transparent")
             e.grid(row=0, column=0, pady=50)
-            ctk.CTkLabel(e, text="🔍", font=ctk.CTkFont(size=32)).pack()
+            ctk.CTkLabel(e, text="⌕", font=ctk.CTkFont(size=32)).pack()
             ctk.CTkLabel(e, text="Sin resultados",
                          font=ctk.CTkFont(size=14, weight="bold"), text_color=CLR_TEXT_SOFT).pack(pady=(6,2))
             ctk.CTkLabel(e, text="Intenta con otro término",
@@ -347,10 +347,10 @@ class ResidentesScreen(ctk.CTkFrame):
         tipo_var = ctk.StringVar(value=_tipo_inicial)
 
         STEPS = [
-            ("👤", "Datos personales"),
-            ("🏠", "Habitación"),
+            ("◯", "Datos personales"),
+            ("▣", "Habitación"),
             ("👨\u200d👩\u200d👧", "Familiar"),
-            ("📄", "Documentos"),
+            ("▭", "Documentos"),
         ]
         step_state = {"current": 0}
 
@@ -572,7 +572,7 @@ class ResidentesScreen(ctk.CTkFrame):
                 icon_b = ctk.CTkFrame(card, fg_color="#dbeafe", corner_radius=8, width=34, height=34)
                 icon_b.grid(row=0, column=1, padx=8, pady=8)
                 icon_b.grid_propagate(False)
-                ctk.CTkLabel(icon_b, text="🏠", font=ctk.CTkFont(size=15)
+                ctk.CTkLabel(icon_b, text="▣", font=ctk.CTkFont(size=15)
                              ).place(relx=.5, rely=.5, anchor="center")
                 ctk.CTkLabel(card, text=f"Habitación #{numero}",
                              font=ctk.CTkFont(size=13, weight="bold"),
@@ -673,7 +673,7 @@ class ResidentesScreen(ctk.CTkFrame):
             for j, (circle, c_lbl, t_lbl, line) in enumerate(step_widgets):
                 if j < i:
                     circle.configure(fg_color=CLR_GREEN)
-                    c_lbl.configure(text="✓", text_color=CLR_WHITE)
+                    c_lbl.configure(text="✔", text_color=CLR_WHITE)
                     t_lbl.configure(text_color=CLR_GREEN)
                 elif j == i:
                     circle.configure(fg_color=CLR_SKY_DARK)
@@ -685,7 +685,7 @@ class ResidentesScreen(ctk.CTkFrame):
                     t_lbl.configure(text_color=CLR_MUTED, font=ctk.CTkFont(size=10))
             btn_back.configure(state="normal" if i > 0 else "disabled")
             if i == len(STEPS) - 1:
-                btn_next.configure(text="💾  Guardar", fg_color="#16a34a",
+                btn_next.configure(text="▦  Guardar", fg_color="#16a34a",
                                    hover_color="#15803d", command=_save)
             else:
                 btn_next.configure(text="Siguiente →", fg_color=CLR_SKY_DARK,
@@ -743,7 +743,7 @@ class ResidentesScreen(ctk.CTkFrame):
             alert.configure(fg_color=CLR_WHITE)
             alert.resizable(False, False)
             _center(alert, 360, 180)
-            ctk.CTkLabel(alert, text="⚠️", font=ctk.CTkFont(size=36)).pack(pady=(18,4))
+            ctk.CTkLabel(alert, text="▲", font=ctk.CTkFont(size=36)).pack(pady=(18,4))
             ctk.CTkLabel(alert, text="Campo requerido",
                          font=ctk.CTkFont(size=14, weight="bold"), text_color=CLR_TEXT).pack()
             ctk.CTkLabel(alert, text=msg, font=ctk.CTkFont(size=11),
@@ -928,7 +928,7 @@ class ResidentesScreen(ctk.CTkFrame):
                              ).pack(side="left", padx=(14,0), pady=8)
                 val = str(r.get(key) or "—")
                 if val != "—" and ("/" in val or "\\" in val):
-                    val = "✅ " + os.path.basename(val)
+                    val = "✔ " + os.path.basename(val)
                 ctk.CTkLabel(row_f, text=val, font=ctk.CTkFont(size=12),
                              text_color=CLR_TEXT_SOFT, anchor="w").pack(side="left", padx=8)
 
@@ -946,7 +946,7 @@ class ResidentesScreen(ctk.CTkFrame):
         dialog.configure(fg_color=CLR_WHITE)
         dialog.resizable(False, False)
         _center(dialog, 380, 200)
-        ctk.CTkLabel(dialog, text="⚠️", font=ctk.CTkFont(size=36)).pack(pady=(24,4))
+        ctk.CTkLabel(dialog, text="▲", font=ctk.CTkFont(size=36)).pack(pady=(24,4))
         ctk.CTkLabel(dialog, text="¿Eliminar este residente?",
                      font=ctk.CTkFont(size=15, weight="bold"), text_color=CLR_TEXT).pack()
         ctk.CTkLabel(dialog, text="Esta acción es permanente.",
@@ -989,7 +989,7 @@ class ResidentesScreen(ctk.CTkFrame):
         x = self.winfo_rootx() + self.winfo_width()  - 320
         y = self.winfo_rooty() + self.winfo_height() - 72
         t.geometry(f"300x48+{x}+{y}")
-        ctk.CTkLabel(t, text=("❌  " if error else "✅  ") + msg,
+        ctk.CTkLabel(t, text=("✖  " if error else "✔  ") + msg,
                      font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_WHITE).pack(fill="both", expand=True, padx=14)
         t.after(2800, t.destroy)
@@ -1015,7 +1015,7 @@ def _make_file_row(parent, var: ctk.StringVar, win, padx=0, pady_bottom=0):
             var.set(path)
             entry.configure(text_color=CLR_TEXT)
 
-    ctk.CTkButton(row, text="📁  Elegir",
+    ctk.CTkButton(row, text="▶  Elegir",
                   fg_color=CLR_SKY_LIGHT, hover_color="#bae6fd",
                   text_color=CLR_SKY_XDARK, font=ctk.CTkFont(size=11, weight="bold"),
                   corner_radius=8, height=34, width=90,

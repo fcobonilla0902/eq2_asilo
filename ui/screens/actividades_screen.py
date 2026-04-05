@@ -5,6 +5,7 @@ CRUD de actividades fijas y programadas + registro de participación.
 
 import customtkinter as ctk
 from datetime import date, datetime
+import calendar
 
 CLR_SKY_DARK   = "#0ea5e9"
 CLR_SKY_XDARK  = "#0284c7"
@@ -56,6 +57,403 @@ def _estado_actividad(es_fija: str, fecha_programada: str, hora_programada: str)
     return "Programada", CLR_SKY_LIGHT, CLR_SKY_XDARK
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Widget: Calendario emergente
+# ─────────────────────────────────────────────────────────────────────────────
+class CalendarPicker(ctk.CTkToplevel):
+    """Popup con un calendario mensual para seleccionar fecha."""
+
+    DIAS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
+    MESES = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+
+    def __init__(self, parent, initial_date: str, on_select):
+        super().__init__(parent)
+        self.overrideredirect(True)
+        self.configure(fg_color=CLR_WHITE)
+        self.attributes("-topmost", True)
+
+        # Borde con sombra simulada
+        outer = ctk.CTkFrame(self, fg_color=CLR_BORDER, corner_radius=14)
+        outer.pack(padx=1, pady=1, fill="both", expand=True)
+        inner = ctk.CTkFrame(outer, fg_color=CLR_WHITE, corner_radius=13)
+        inner.pack(padx=1, pady=1, fill="both", expand=True)
+
+        self._on_select = on_select
+
+        try:
+            self._current = date.fromisoformat(initial_date)
+        except Exception:
+            self._current = date.today()
+        self._view_year = self._current.year
+        self._view_month = self._current.month
+
+        self._container = inner
+        self._build()
+
+        # Posicionar junto al widget padre
+        parent.update_idletasks()
+        x = parent.winfo_rootx()
+        y = parent.winfo_rooty() + parent.winfo_height() + 4
+        self.geometry(f"280x300+{x}+{y}")
+
+        # Cerrar al perder foco
+        self.bind("<FocusOut>", self._on_focus_out)
+        self.focus_set()
+
+    def _on_focus_out(self, event):
+        self.after(100, self._check_focus)
+
+    def _check_focus(self):
+        try:
+            focused = self.focus_get()
+            if focused is None or str(focused) not in str(self.winfo_children()):
+                self.destroy()
+        except Exception:
+            self.destroy()
+
+    def _build(self):
+        for w in self._container.winfo_children():
+            w.destroy()
+
+        # Cabecera: mes/año + navegación
+        header = ctk.CTkFrame(self._container, fg_color="transparent")
+        header.pack(fill="x", padx=12, pady=(10, 4))
+
+        ctk.CTkButton(
+            header, text="‹", width=28, height=28,
+            fg_color=CLR_BG, hover_color=CLR_BORDER,
+            text_color=CLR_TEXT, corner_radius=6, font=ctk.CTkFont(size=14),
+            command=self._prev_month
+        ).pack(side="left")
+
+        ctk.CTkLabel(
+            header,
+            text=f"{self.MESES[self._view_month - 1]} {self._view_year}",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=CLR_TEXT
+        ).pack(side="left", expand=True)
+
+        ctk.CTkButton(
+            header, text="›", width=28, height=28,
+            fg_color=CLR_BG, hover_color=CLR_BORDER,
+            text_color=CLR_TEXT, corner_radius=6, font=ctk.CTkFont(size=14),
+            command=self._next_month
+        ).pack(side="right")
+
+        # Nombres de días
+        days_hdr = ctk.CTkFrame(self._container, fg_color="transparent")
+        days_hdr.pack(fill="x", padx=12, pady=(2, 0))
+        for i, d in enumerate(self.DIAS):
+            ctk.CTkLabel(
+                days_hdr, text=d, width=32,
+                font=ctk.CTkFont(size=10, weight="bold"),
+                text_color=CLR_MUTED
+            ).grid(row=0, column=i, padx=1)
+
+        # Grilla de días
+        grid = ctk.CTkFrame(self._container, fg_color="transparent")
+        grid.pack(fill="both", expand=True, padx=12, pady=(2, 10))
+
+        cal = calendar.monthcalendar(self._view_year, self._view_month)
+        today = date.today()
+
+        for r, week in enumerate(cal):
+            for c, day in enumerate(week):
+                if day == 0:
+                    ctk.CTkFrame(grid, fg_color="transparent", width=32, height=30).grid(
+                        row=r, column=c, padx=1, pady=1
+                    )
+                    continue
+
+                d = date(self._view_year, self._view_month, day)
+                is_selected = (d == self._current)
+                is_today = (d == today)
+
+                if is_selected:
+                    bg, fg, hover = CLR_SKY_DARK, CLR_WHITE, CLR_SKY_XDARK
+                elif is_today:
+                    bg, fg, hover = CLR_SKY_LIGHT, CLR_SKY_XDARK, "#bae6fd"
+                else:
+                    bg, fg, hover = "transparent", CLR_TEXT, CLR_BG
+
+                btn = ctk.CTkButton(
+                    grid, text=str(day), width=32, height=30,
+                    fg_color=bg, hover_color=hover,
+                    text_color=fg, corner_radius=6,
+                    font=ctk.CTkFont(size=11, weight="bold" if is_selected or is_today else "normal"),
+                    command=lambda _d=d: self._pick(_d)
+                )
+                btn.grid(row=r, column=c, padx=1, pady=1)
+
+    def _prev_month(self):
+        if self._view_month == 1:
+            self._view_month = 12
+            self._view_year -= 1
+        else:
+            self._view_month -= 1
+        self._build()
+
+    def _next_month(self):
+        if self._view_month == 12:
+            self._view_month = 1
+            self._view_year += 1
+        else:
+            self._view_month += 1
+        self._build()
+
+    def _pick(self, d: date):
+        self._on_select(d.isoformat())
+        self.destroy()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Widget: Selector de hora emergente (ruedas de hora y minutos)
+# ─────────────────────────────────────────────────────────────────────────────
+class TimePicker(ctk.CTkToplevel):
+    """Popup con dos columnas desplazables para seleccionar hora y minutos."""
+
+    def __init__(self, parent, initial_time: str, on_select):
+        super().__init__(parent)
+        self.overrideredirect(True)
+        self.configure(fg_color=CLR_WHITE)
+        self.attributes("-topmost", True)
+
+        self._on_select = on_select
+
+        try:
+            parts = initial_time.strip().split(":")
+            self._hour = int(parts[0]) % 24
+            self._minute = int(parts[1]) % 60
+        except Exception:
+            self._hour = 9
+            self._minute = 0
+
+        outer = ctk.CTkFrame(self, fg_color=CLR_BORDER, corner_radius=14)
+        outer.pack(padx=1, pady=1, fill="both", expand=True)
+        inner = ctk.CTkFrame(outer, fg_color=CLR_WHITE, corner_radius=13)
+        inner.pack(padx=1, pady=1, fill="both", expand=True)
+
+        self._build(inner)
+
+        parent.update_idletasks()
+        x = parent.winfo_rootx()
+        y = parent.winfo_rooty() + parent.winfo_height() + 4
+        self.geometry(f"230x320+{x}+{y}")
+
+        self.bind("<FocusOut>", self._on_focus_out)
+        self.focus_set()
+
+    def _on_focus_out(self, event):
+        self.after(150, self._check_focus)
+
+    def _check_focus(self):
+        try:
+            if self.focus_get() is None:
+                self.destroy()
+        except Exception:
+            self.destroy()
+
+    def _build(self, container):
+        # Título
+        ctk.CTkLabel(
+            container, text="Selecciona la hora",
+            font=ctk.CTkFont(size=12, weight="bold"), text_color=CLR_TEXT
+        ).pack(pady=(12, 6))
+
+        # Área central: dos columnas
+        cols_frame = ctk.CTkFrame(container, fg_color="transparent")
+        cols_frame.pack(fill="both", expand=True, padx=16)
+
+        # Etiquetas
+        hdr = ctk.CTkFrame(cols_frame, fg_color="transparent")
+        hdr.pack(fill="x")
+        ctk.CTkLabel(hdr, text="Hora", font=ctk.CTkFont(size=10, weight="bold"),
+                     text_color=CLR_MUTED, width=90).pack(side="left", expand=True)
+        ctk.CTkLabel(hdr, text="Minutos", font=ctk.CTkFont(size=10, weight="bold"),
+                     text_color=CLR_MUTED, width=90).pack(side="right", expand=True)
+
+        wheels = ctk.CTkFrame(cols_frame, fg_color="transparent")
+        wheels.pack(fill="both", expand=True, pady=4)
+
+        # Columna horas
+        hour_col = ctk.CTkScrollableFrame(
+            wheels, fg_color=CLR_BG, corner_radius=8,
+            width=85, height=160
+        )
+        hour_col.pack(side="left", expand=True, fill="y")
+
+        # Columna minutos
+        min_col = ctk.CTkScrollableFrame(
+            wheels, fg_color=CLR_BG, corner_radius=8,
+            width=85, height=160
+        )
+        min_col.pack(side="right", expand=True, fill="y")
+
+        self._hour_btns = []
+        self._min_btns = []
+
+        for h in range(24):
+            is_sel = (h == self._hour)
+            btn = ctk.CTkButton(
+                hour_col,
+                text=f"{h:02d}",
+                height=30, width=75,
+                fg_color=CLR_SKY_DARK if is_sel else "transparent",
+                hover_color=CLR_SKY_LIGHT,
+                text_color=CLR_WHITE if is_sel else CLR_TEXT,
+                font=ctk.CTkFont(size=12, weight="bold" if is_sel else "normal"),
+                corner_radius=6,
+                command=lambda _h=h: self._select_hour(_h)
+            )
+            btn.pack(pady=1)
+            self._hour_btns.append(btn)
+
+        for m in range(60):
+            is_sel = (m == self._minute)
+            btn = ctk.CTkButton(
+                min_col,
+                text=f"{m:02d}",
+                height=30, width=75,
+                fg_color=CLR_SKY_DARK if is_sel else "transparent",
+                hover_color=CLR_SKY_LIGHT,
+                text_color=CLR_WHITE if is_sel else CLR_TEXT,
+                font=ctk.CTkFont(size=12, weight="bold" if is_sel else "normal"),
+                corner_radius=6,
+                command=lambda _m=m: self._select_minute(_m)
+            )
+            btn.pack(pady=1)
+            self._min_btns.append(btn)
+
+        # Botón confirmar
+        ctk.CTkButton(
+            container, text="Confirmar",
+            fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
+            text_color=CLR_WHITE, corner_radius=8, height=36,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            command=self._confirm
+        ).pack(fill="x", padx=16, pady=(6, 12))
+
+    def _select_hour(self, h):
+        # Deseleccionar anterior
+        old = self._hour_btns[self._hour]
+        old.configure(fg_color="transparent", text_color=CLR_TEXT,
+                      font=ctk.CTkFont(size=12, weight="normal"))
+        # Seleccionar nuevo
+        self._hour = h
+        new = self._hour_btns[h]
+        new.configure(fg_color=CLR_SKY_DARK, text_color=CLR_WHITE,
+                      font=ctk.CTkFont(size=12, weight="bold"))
+
+    def _select_minute(self, m):
+        old = self._min_btns[self._minute]
+        old.configure(fg_color="transparent", text_color=CLR_TEXT,
+                      font=ctk.CTkFont(size=12, weight="normal"))
+        self._minute = m
+        new = self._min_btns[m]
+        new.configure(fg_color=CLR_SKY_DARK, text_color=CLR_WHITE,
+                      font=ctk.CTkFont(size=12, weight="bold"))
+
+    def _confirm(self):
+        self._on_select(f"{self._hour:02d}:{self._minute:02d}")
+        self.destroy()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helper: campo de fecha con botón de calendario
+# ─────────────────────────────────────────────────────────────────────────────
+def _make_date_field(parent, initial_value: str):
+    """
+    Retorna (frame, var) donde var es un StringVar con la fecha seleccionada.
+    Al hacer clic en el campo o el ícono, abre el CalendarPicker.
+    """
+    var = ctk.StringVar(value=initial_value)
+
+    frame = ctk.CTkFrame(
+        parent, fg_color=CLR_WHITE, corner_radius=8,
+        border_width=1, border_color=CLR_BORDER, height=38
+    )
+    frame.pack_propagate(False)
+
+    entry = ctk.CTkEntry(
+        frame, textvariable=var, height=36,
+        fg_color="transparent", border_width=0,
+        text_color=CLR_TEXT, font=ctk.CTkFont(size=12)
+    )
+    entry.pack(side="left", fill="both", expand=True, padx=(10, 0))
+
+    icon_btn = ctk.CTkButton(
+        frame, text="▷", width=36, height=36,
+        fg_color="transparent", hover_color=CLR_SKY_LIGHT,
+        text_color=CLR_MUTED, corner_radius=8
+    )
+    icon_btn.pack(side="right", padx=(0, 2))
+
+    _picker_ref = [None]
+
+    def _open_calendar(event=None):
+        if _picker_ref[0] and _picker_ref[0].winfo_exists():
+            return
+        def _on_date(d):
+            var.set(d)
+        _picker_ref[0] = CalendarPicker(icon_btn, var.get(), _on_date)
+
+    icon_btn.configure(command=_open_calendar)
+    entry.bind("<Button-1>", _open_calendar)
+
+    return frame, var
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helper: campo de hora con botón de reloj
+# ─────────────────────────────────────────────────────────────────────────────
+def _make_time_field(parent, initial_value: str):
+    """
+    Retorna (frame, var) donde var es un StringVar con la hora seleccionada.
+    Al hacer clic en el campo o el ícono, abre el TimePicker.
+    """
+    var = ctk.StringVar(value=initial_value)
+
+    frame = ctk.CTkFrame(
+        parent, fg_color=CLR_WHITE, corner_radius=8,
+        border_width=1, border_color=CLR_BORDER, height=38
+    )
+    frame.pack_propagate(False)
+
+    entry = ctk.CTkEntry(
+        frame, textvariable=var, height=36,
+        fg_color="transparent", border_width=0,
+        text_color=CLR_TEXT, font=ctk.CTkFont(size=12)
+    )
+    entry.pack(side="left", fill="both", expand=True, padx=(10, 0))
+
+    icon_btn = ctk.CTkButton(
+        frame, text="◷", width=36, height=36,
+        fg_color="transparent", hover_color=CLR_SKY_LIGHT,
+        text_color=CLR_MUTED, corner_radius=8
+    )
+    icon_btn.pack(side="right", padx=(0, 2))
+
+    _picker_ref = [None]
+
+    def _open_time(event=None):
+        if _picker_ref[0] and _picker_ref[0].winfo_exists():
+            return
+        def _on_time(t):
+            var.set(t)
+        _picker_ref[0] = TimePicker(icon_btn, var.get(), _on_time)
+
+    icon_btn.configure(command=_open_time)
+    entry.bind("<Button-1>", _open_time)
+
+    return frame, var
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pantalla principal
+# ─────────────────────────────────────────────────────────────────────────────
 class ActividadesScreen(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color=CLR_SKY_XLIGHT, corner_radius=0)
@@ -100,7 +498,7 @@ class ActividadesScreen(ctk.CTkFrame):
         search_wrap.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            search_wrap, text="🔍", font=ctk.CTkFont(size=13),
+            search_wrap, text="⌕", font=ctk.CTkFont(size=13),
             text_color=CLR_MUTED, width=30
         ).grid(row=0, column=0, padx=(10, 2), pady=9)
 
@@ -119,7 +517,7 @@ class ActividadesScreen(ctk.CTkFrame):
         btns.grid(row=0, column=2, padx=(8, 28), pady=14)
 
         ctk.CTkButton(
-            btns, text="🧾 Participación",
+            btns, text="▤ Participación",
             fg_color=CLR_SKY_LIGHT, hover_color="#bae6fd",
             text_color=CLR_SKY_XDARK, font=ctk.CTkFont(size=12, weight="bold"),
             corner_radius=10, height=38, command=self._open_participacion
@@ -142,10 +540,10 @@ class ActividadesScreen(ctk.CTkFrame):
         sf.grid(row=1, column=0, sticky="ew", padx=24, pady=(18, 0))
         sf.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
-        self._stat_total = self._stat_card(sf, 0, "Total actividades", "0", "📋", CLR_SKY_DARK, "#dbeafe")
-        self._stat_fijas = self._stat_card(sf, 1, "Fijas", "0", "♾️", CLR_GREEN_DARK, CLR_GREEN_LIGHT)
-        self._stat_prog  = self._stat_card(sf, 2, "Programadas", "0", "🗓️", CLR_SKY_XDARK, CLR_SKY_LIGHT)
-        self._stat_part  = self._stat_card(sf, 3, "Participaciones", "0", "🙋", CLR_AMBER, CLR_AMBER_LIGHT)
+        self._stat_total = self._stat_card(sf, 0, "Total actividades", "0", "▤", CLR_SKY_DARK, "#dbeafe")
+        self._stat_fijas = self._stat_card(sf, 1, "Fijas", "0", "∞", CLR_GREEN_DARK, CLR_GREEN_LIGHT)
+        self._stat_prog  = self._stat_card(sf, 2, "Opcionales", "0", "▦", CLR_SKY_XDARK, CLR_SKY_LIGHT)
+        self._stat_part  = self._stat_card(sf, 3, "Participaciones", "0", "+", CLR_AMBER, CLR_AMBER_LIGHT)
 
     def _stat_card(self, parent, col, title, value, icon, icon_color, icon_bg):
         card = ctk.CTkFrame(parent, fg_color=CLR_WHITE, corner_radius=14,
@@ -241,7 +639,7 @@ class ActividadesScreen(ctk.CTkFrame):
     def _update_stats(self, rows):
         total = len(rows)
         fijas = 0
-        programadas = 0
+        opcionales = 0
         participaciones = 0
 
         for r in rows:
@@ -249,13 +647,13 @@ class ActividadesScreen(ctk.CTkFrame):
             if es_fija in ("sí", "si", "1", "true", "fija"):
                 fijas += 1
             else:
-                programadas += 1
+                opcionales += 1
 
             participaciones += int(r.get("total_registros") or 0)
 
         self._stat_total.configure(text=str(total))
         self._stat_fijas.configure(text=str(fijas))
-        self._stat_prog.configure(text=str(programadas))
+        self._stat_prog.configure(text=str(opcionales))
         self._stat_part.configure(text=str(participaciones))
 
     def _filter(self):
@@ -280,7 +678,7 @@ class ActividadesScreen(ctk.CTkFrame):
         if not rows:
             e = ctk.CTkFrame(self._table, fg_color="transparent")
             e.grid(row=0, column=0, pady=50)
-            ctk.CTkLabel(e, text="📋", font=ctk.CTkFont(size=32)).pack()
+            ctk.CTkLabel(e, text="▤", font=ctk.CTkFont(size=32)).pack()
             ctk.CTkLabel(
                 e, text="Sin actividades registradas",
                 font=ctk.CTkFont(size=14, weight="bold"), text_color=CLR_TEXT_SOFT
@@ -299,7 +697,7 @@ class ActividadesScreen(ctk.CTkFrame):
             hora = row.get("hora_programada", "—") or "—"
             total_registros = int(row.get("total_registros") or 0)
 
-            tipo_txt = "Fija" if str(es_fija).strip().lower() in ("sí", "si", "1", "true", "fija") else "Programada"
+            tipo_txt = "Fija" if str(es_fija).strip().lower() in ("sí", "si", "1", "true", "fija") else "Opcional"
             estado_txt, estado_bg, estado_fg = _estado_actividad(es_fija, fecha, hora)
 
             bg = CLR_WHITE if idx % 2 == 0 else CLR_ROW_ALT
@@ -375,7 +773,7 @@ class ActividadesScreen(ctk.CTkFrame):
         _center(win, 460, 560)
 
         ctk.CTkLabel(
-            win, text="📋 Nueva actividad" if not edit else "📋 Editar actividad",
+            win, text="▤ Nueva actividad" if not edit else "▤ Editar actividad",
             font=ctk.CTkFont(size=16, weight="bold"), text_color=CLR_TEXT
         ).pack(pady=(20, 2))
         ctk.CTkLabel(
@@ -388,7 +786,7 @@ class ActividadesScreen(ctk.CTkFrame):
         form = ctk.CTkFrame(win, fg_color="transparent")
         form.pack(fill="both", expand=True, padx=28, pady=(16, 0))
 
-        # nombre
+        # ── Nombre ──
         ctk.CTkLabel(form, text="Nombre", font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_TEXT_SOFT).pack(anchor="w", pady=(0, 3))
         entry_nombre = ctk.CTkEntry(form, height=38, corner_radius=8, border_color=CLR_BORDER)
@@ -396,39 +794,58 @@ class ActividadesScreen(ctk.CTkFrame):
         if edit and datos_edicion.get("nombre"):
             entry_nombre.insert(0, str(datos_edicion["nombre"]))
 
-        # tipo
+        # ── Tipo (Fija / Opcional) ──
         ctk.CTkLabel(form, text="Tipo", font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_TEXT_SOFT).pack(anchor="w", pady=(0, 3))
-        tipo_var = ctk.StringVar(value=str(datos_edicion.get("es_fija", "No")) if edit else "No")
-        tipo_menu = ctk.CTkOptionMenu(form, values=["Sí", "No"], variable=tipo_var, height=38, corner_radius=8)
+
+        # Determinar valor inicial para el tipo
+        if edit:
+            es_fija_val = str(datos_edicion.get("es_fija", "")).strip().lower()
+            tipo_inicial = "Fija" if es_fija_val in ("sí", "si", "1", "true", "fija") else "Opcional"
+        else:
+            tipo_inicial = "Opcional"
+
+        tipo_var = ctk.StringVar(value=tipo_inicial)
+        tipo_menu = ctk.CTkOptionMenu(
+            form,
+            values=["Fija", "Opcional"],
+            variable=tipo_var,
+            height=38,
+            corner_radius=8
+        )
         tipo_menu.pack(fill="x", pady=(0, 12))
 
-        # fecha
+        # ── Fecha (con calendario) ──
         ctk.CTkLabel(form, text="Fecha programada", font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_TEXT_SOFT).pack(anchor="w", pady=(0, 3))
-        entry_fecha = ctk.CTkEntry(form, height=38, corner_radius=8, border_color=CLR_BORDER)
-        entry_fecha.pack(fill="x", pady=(0, 12))
-        entry_fecha.insert(0, str(datos_edicion.get("fecha_programada", date.today().isoformat())) if edit else date.today().isoformat())
 
-        # hora
+        fecha_inicial = str(datos_edicion.get("fecha_programada", date.today().isoformat())) if edit else date.today().isoformat()
+        fecha_frame, fecha_var = _make_date_field(form, fecha_inicial)
+        fecha_frame.pack(fill="x", pady=(0, 12))
+
+        # ── Hora (con selector) ──
         ctk.CTkLabel(form, text="Hora programada", font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_TEXT_SOFT).pack(anchor="w", pady=(0, 3))
-        entry_hora = ctk.CTkEntry(form, height=38, corner_radius=8, border_color=CLR_BORDER)
-        entry_hora.pack(fill="x", pady=(0, 12))
-        entry_hora.insert(0, str(datos_edicion.get("hora_programada", "09:00")) if edit else "09:00")
+
+        hora_inicial = str(datos_edicion.get("hora_programada", "09:00")) if edit else "09:00"
+        hora_frame, hora_var = _make_time_field(form, hora_inicial)
+        hora_frame.pack(fill="x", pady=(0, 12))
 
         lbl_msg = ctk.CTkLabel(win, text="", font=ctk.CTkFont(size=11), text_color=CLR_RED)
         lbl_msg.pack(pady=(8, 0))
 
         def _guardar():
             nombre = entry_nombre.get().strip()
-            es_fija = tipo_var.get().strip()
-            fecha_prog = entry_fecha.get().strip()
-            hora_prog = entry_hora.get().strip()
+            tipo = tipo_var.get().strip()          # "Fija" o "Opcional"
+            fecha_prog = fecha_var.get().strip()
+            hora_prog = hora_var.get().strip()
 
             if not nombre:
-                lbl_msg.configure(text="⚠ El nombre es obligatorio.")
+                lbl_msg.configure(text="▲ El nombre es obligatorio.")
                 return
+
+            # Mapear "Fija"/"Opcional" al valor almacenado
+            es_fija = "Fija" if tipo == "Fija" else "No"
 
             datos = {
                 "nombre": nombre,
@@ -449,7 +866,7 @@ class ActividadesScreen(ctk.CTkFrame):
                 win.destroy()
                 self._load_data()
             except Exception as ex:
-                lbl_msg.configure(text=f"⚠ {ex}")
+                lbl_msg.configure(text=f"▲ {ex}")
 
         btn_bar = ctk.CTkFrame(win, fg_color=CLR_WHITE, corner_radius=0)
         btn_bar.pack(fill="x", pady=(14, 16))
@@ -488,10 +905,10 @@ class ActividadesScreen(ctk.CTkFrame):
         win.grab_set()
         win.configure(fg_color=CLR_WHITE)
         win.resizable(False, False)
-        _center(win, 520, 620)
+        _center(win, 520, 480)
 
         ctk.CTkLabel(
-            win, text="🙋 Registrar participación",
+            win, text="+ Registrar participación",
             font=ctk.CTkFont(size=16, weight="bold"), text_color=CLR_TEXT
         ).pack(pady=(20, 2))
         ctk.CTkLabel(
@@ -540,18 +957,6 @@ class ActividadesScreen(ctk.CTkFrame):
         combo_act.pack(fill="x", pady=(0, 12))
         combo_act.set("Selecciona una actividad...")
 
-        ctk.CTkLabel(form, text="Fecha", font=ctk.CTkFont(size=12, weight="bold"),
-                     text_color=CLR_TEXT_SOFT).pack(anchor="w", pady=(0, 3))
-        entry_fecha = ctk.CTkEntry(form, height=38, corner_radius=8, border_color=CLR_BORDER)
-        entry_fecha.pack(fill="x", pady=(0, 12))
-        entry_fecha.insert(0, date.today().isoformat())
-
-        ctk.CTkLabel(form, text="Hora", font=ctk.CTkFont(size=12, weight="bold"),
-                     text_color=CLR_TEXT_SOFT).pack(anchor="w", pady=(0, 3))
-        entry_hora = ctk.CTkEntry(form, height=38, corner_radius=8, border_color=CLR_BORDER)
-        entry_hora.pack(fill="x", pady=(0, 12))
-        entry_hora.insert(0, datetime.now().strftime("%H:%M"))
-
         ctk.CTkLabel(form, text="Participó", font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_TEXT_SOFT).pack(anchor="w", pady=(0, 3))
         participo_var = ctk.StringVar(value="Sí")
@@ -565,15 +970,15 @@ class ActividadesScreen(ctk.CTkFrame):
             act_key = combo_act.get()
             res_id = res_opts.get(res_key)
             act_id = act_opts.get(act_key)
-            fecha = entry_fecha.get().strip()
-            hora = entry_hora.get().strip()
+            fecha = date.today().isoformat()
+            hora = datetime.now().strftime("%H:%M")
             participo = 1 if participo_var.get() == "Sí" else 0
 
             if not res_id:
-                lbl_msg.configure(text="⚠ Debes seleccionar un residente.")
+                lbl_msg.configure(text="▲ Debes seleccionar un residente.")
                 return
             if not act_id:
-                lbl_msg.configure(text="⚠ Debes seleccionar una actividad.")
+                lbl_msg.configure(text="▲ Debes seleccionar una actividad.")
                 return
 
             try:
@@ -589,7 +994,7 @@ class ActividadesScreen(ctk.CTkFrame):
                 win.destroy()
                 self._load_data()
             except Exception as ex:
-                lbl_msg.configure(text=f"⚠ {ex}")
+                lbl_msg.configure(text=f"▲ {ex}")
 
         btn_bar = ctk.CTkFrame(win, fg_color=CLR_WHITE, corner_radius=0)
         btn_bar.pack(fill="x", pady=(14, 16))
@@ -622,7 +1027,7 @@ class ActividadesScreen(ctk.CTkFrame):
         dialog.resizable(False, False)
         _center(dialog, 380, 200)
 
-        ctk.CTkLabel(dialog, text="⚠️", font=ctk.CTkFont(size=36)).pack(pady=(24, 4))
+        ctk.CTkLabel(dialog, text="▲", font=ctk.CTkFont(size=36)).pack(pady=(24, 4))
         ctk.CTkLabel(dialog, text="¿Eliminar esta actividad?",
                      font=ctk.CTkFont(size=15, weight="bold"), text_color=CLR_TEXT).pack()
         ctk.CTkLabel(dialog, text="Esta acción también eliminará sus participaciones.",
@@ -670,7 +1075,7 @@ class ActividadesScreen(ctk.CTkFrame):
         y = self.winfo_rooty() + self.winfo_height() - 72
         t.geometry(f"300x48+{x}+{y}")
         ctk.CTkLabel(
-            t, text=("❌  " if error else "✅  ") + msg,
+            t, text=("✖  " if error else "✔  ") + msg,
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color=CLR_WHITE
         ).pack(fill="both", expand=True, padx=14)

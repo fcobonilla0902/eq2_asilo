@@ -22,7 +22,7 @@ ROL_COLOR = {
     "enfermero": ("#d1fae5", "#065f46"),
     "doctor":    ("#fef3c7", "#92400e"),
 }
-ROL_ICON = {"admin": "🛡️", "enfermero": "💉", "doctor": "🩺"}
+ROL_ICON = {"admin": "◈", "enfermero": "⊕", "doctor": "◎"}
 AVATAR_COLORS = ["#6366f1","#8b5cf6","#ec4899","#0ea5e9","#14b8a6","#22c55e","#f59e0b"]
 
 def _iniciales(n):
@@ -51,14 +51,14 @@ class UsuariosScreen(ctk.CTkFrame):
 
         left = ctk.CTkFrame(hdr, fg_color="transparent")
         left.grid(row=0, column=0, padx=28, pady=16, sticky="w")
-        ctk.CTkLabel(left, text="🔒  Gestión de Usuarios",
+        ctk.CTkLabel(left, text="Gestión de Usuarios",
                      font=ctk.CTkFont(size=20, weight="bold"),
                      text_color=CLR_TEXT).pack(side="left")
         ctk.CTkLabel(left, text="Solo administradores",
                      font=ctk.CTkFont(size=11), text_color=CLR_MUTED).pack(
                          side="left", padx=(10, 0), pady=(4, 0))
 
-        ctk.CTkButton(hdr, text="＋  Nuevo usuario",
+        ctk.CTkButton(hdr, text="+  Nuevo usuario",
                       fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
                       font=ctk.CTkFont(size=13, weight="bold"),
                       height=36, corner_radius=10,
@@ -132,12 +132,12 @@ class UsuariosScreen(ctk.CTkFrame):
             acc.grid(row=row, column=5, padx=8, pady=6, sticky="w")
 
             uid = u["id"]
-            ctk.CTkButton(acc, text="✏️ Editar", width=78, height=28, corner_radius=6,
+            ctk.CTkButton(acc, text="Editar", width=78, height=28, corner_radius=6,
                           fg_color="#f1f5f9", hover_color="#e2e8f0",
                           text_color=CLR_TEXT_SOFT, font=ctk.CTkFont(size=11),
                           command=lambda i=uid: self._dialog_editar(i)).pack(side="left", padx=(0, 4))
 
-            ctk.CTkButton(acc, text="🔑 Password", width=90, height=28, corner_radius=6,
+            ctk.CTkButton(acc, text="Password", width=90, height=28, corner_radius=6,
                           fg_color=CLR_SKY_LIGHT, hover_color="#bae6fd",
                           text_color=CLR_SKY_XDARK, font=ctk.CTkFont(size=11),
                           command=lambda i=uid: self._dialog_password(i)).pack(side="left", padx=(0, 4))
@@ -150,7 +150,7 @@ class UsuariosScreen(ctk.CTkFrame):
                           text_color=toggle_txt_clr, font=ctk.CTkFont(size=11),
                           command=lambda i=uid: self._toggle(i)).pack(side="left", padx=(0, 4))
 
-            ctk.CTkButton(acc, text="🗑️ Eliminar", width=86, height=28, corner_radius=6,
+            ctk.CTkButton(acc, text="Eliminar", width=86, height=28, corner_radius=6,
                           fg_color=CLR_RED_LIGHT, hover_color="#fecaca",
                           text_color=CLR_RED, font=ctk.CTkFont(size=11),
                           command=lambda i=uid: self._confirmar_eliminar(i)).pack(side="left")
@@ -165,7 +165,7 @@ class UsuariosScreen(ctk.CTkFrame):
         dlg.resizable(False, False)
         dlg.geometry("620x440")
 
-        ctk.CTkLabel(dlg, text="➕  Nuevo Usuario",
+        ctk.CTkLabel(dlg, text="+  Nuevo Usuario",
                      font=ctk.CTkFont(size=16, weight="bold"),
                      text_color=CLR_TEXT).pack(pady=(20, 2))
         ctk.CTkLabel(dlg, text="Completa los datos del nuevo usuario",
@@ -223,14 +223,14 @@ class UsuariosScreen(ctk.CTkFrame):
             password = fields["Contraseña"].get()
             rol      = rol_var.get()
             if not all([nombre, usuario, password]):
-                lbl_msg.configure(text="⚠ Nombre, usuario y contraseña son obligatorios.")
+                lbl_msg.configure(text="▲ Nombre, usuario y contraseña son obligatorios.")
                 return
             ok = crear_usuario(usuario, password, rol, nombre, telefono)
             if ok:
                 dlg.destroy()
                 self._load_data()
             else:
-                lbl_msg.configure(text="⚠ El usuario ya existe o hubo un error.")
+                lbl_msg.configure(text="▲ El usuario ya existe o hubo un error.")
 
         btn_bar = ctk.CTkFrame(dlg, fg_color=CLR_WHITE, corner_radius=0)
         btn_bar.pack(fill="x", pady=(6, 16))
@@ -262,7 +262,7 @@ class UsuariosScreen(ctk.CTkFrame):
         dlg.configure(fg_color=CLR_WHITE)
         dlg.resizable(False, False)
 
-        ctk.CTkLabel(dlg, text="🔑  Nueva Contraseña",
+        ctk.CTkLabel(dlg, text="⊛  Nueva Contraseña",
                      font=ctk.CTkFont(size=15, weight="bold"),
                      text_color=CLR_TEXT).pack(pady=(24, 4))
         ctk.CTkFrame(dlg, fg_color=CLR_BORDER, height=1).pack(fill="x", padx=24, pady=(12, 16))
@@ -276,7 +276,7 @@ class UsuariosScreen(ctk.CTkFrame):
         def _guardar():
             pw = e.get()
             if len(pw) < 3:
-                lbl_msg.configure(text="⚠ Mínimo 3 caracteres.")
+                lbl_msg.configure(text="▲ Mínimo 3 caracteres.")
                 return
             cambiar_password(id_usuario, pw)
             dlg.destroy()
@@ -362,7 +362,7 @@ class UsuariosScreen(ctk.CTkFrame):
             telefono = fields["Teléfono"].get().strip()
             rol      = rol_var.get()
             if not nombre or not usuario:
-                lbl_msg.configure(text="⚠ Nombre y usuario son obligatorios.")
+                lbl_msg.configure(text="▲ Nombre y usuario son obligatorios.")
                 return
             try:
                 conn = get_connection()
@@ -375,7 +375,7 @@ class UsuariosScreen(ctk.CTkFrame):
                 dlg.destroy()
                 self._load_data()
             except Exception as ex:
-                lbl_msg.configure(text=f"⚠ Error: {ex}")
+                lbl_msg.configure(text=f"▲ Error: {ex}")
 
         btn_bar = ctk.CTkFrame(dlg, fg_color=CLR_WHITE, corner_radius=0)
         btn_bar.pack(fill="x", pady=(6, 16))
@@ -410,7 +410,7 @@ class UsuariosScreen(ctk.CTkFrame):
             dlg.grab_set()
             dlg.configure(fg_color=CLR_WHITE)
             dlg.resizable(False, False)
-            ctk.CTkLabel(dlg, text="⚠️  No puedes eliminarte a ti mismo.",
+            ctk.CTkLabel(dlg, text="▲  No puedes eliminarte a ti mismo.",
                          font=ctk.CTkFont(size=13, weight="bold"),
                          text_color=CLR_TEXT).pack(pady=(36, 8))
             ctk.CTkButton(dlg, text="Entendido", height=36, corner_radius=8,
@@ -430,7 +430,7 @@ class UsuariosScreen(ctk.CTkFrame):
         sh = dlg.winfo_screenheight()
         dlg.geometry(f"360x200+{(sw-360)//2}+{(sh-200)//2}")
 
-        ctk.CTkLabel(dlg, text="🗑️  Eliminar usuario",
+        ctk.CTkLabel(dlg, text="✕  Eliminar usuario",
                      font=ctk.CTkFont(size=15, weight="bold"),
                      text_color=CLR_TEXT).pack(pady=(24, 4))
         ctk.CTkLabel(dlg, text="Esta acción no se puede deshacer.\n¿Estás seguro?",

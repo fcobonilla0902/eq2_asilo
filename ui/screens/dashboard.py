@@ -24,20 +24,20 @@ ROL_LABELS = {
     "doctor":    "Doctor/a",
 }
 ROL_ICONS = {
-    "admin":     "🛡️",
-    "enfermero": "💉",
-    "doctor":    "🩺",
+    "admin":     "◈",
+    "enfermero": "⊕",
+    "doctor":    "◎",
 }
 
 # (key, icon, label, modulo_permiso)
 NAV_ITEMS = [
-    ("residentes",     "👤", "Residentes",     "residentes"),
-    ("medicaciones",   "💊", "Medicaciones",   "medicaciones"),
-    ("habitaciones",   "🏠", "Habitaciones",   "habitaciones"),
-    ("signos_vitales", "📈", "Signos Vitales", "signos_vitales"),
-    ("actividades",    "❤️", "Actividades",    "actividades"),
-    ("usuarios",       "🔒", "Usuarios",       "usuarios"),
-    ("respaldo",       "💾", "Respaldo BD",    "respaldo"),
+    ("residentes",     "◯", "Residentes",     "residentes"),
+    ("medicaciones",   "⊕", "Medicaciones",   "medicaciones"),
+    ("habitaciones",   "▣", "Habitaciones",   "habitaciones"),
+    ("signos_vitales", "≈", "Signos Vitales", "signos_vitales"),
+    ("actividades",    "◆", "Actividades",    "actividades"),
+    ("usuarios",       "◉", "Usuarios",       "usuarios"),
+    ("respaldo",       "▦", "Respaldo BD",    "respaldo"),
 ]
 
 
@@ -45,7 +45,7 @@ class Dashboard(ctk.CTk):
     def __init__(self, usuario: dict | None = None):
         super().__init__()
         self._usuario = usuario or {}
-        self.title("Sistema de Gestión — Asilo")
+        self.title("Sistema de Gestión de Asilo - CREAN")
         self.minsize(960, 620)
         self.after(0, lambda: self.state("zoomed"))
         self.configure(fg_color=CLR_SKY_XLIGHT)
@@ -78,11 +78,11 @@ class Dashboard(ctk.CTk):
         icon_box = ctk.CTkFrame(brand, fg_color=CLR_SKY_DARK, corner_radius=12, width=40, height=40)
         icon_box.pack(side="left")
         icon_box.pack_propagate(False)
-        ctk.CTkLabel(icon_box, text="🏥", font=ctk.CTkFont(size=20)).place(relx=.5, rely=.5, anchor="center")
+        ctk.CTkLabel(icon_box, text="✚", font=ctk.CTkFont(size=20)).place(relx=.5, rely=.5, anchor="center")
         title_col = ctk.CTkFrame(brand, fg_color="transparent")
         title_col.pack(side="left", padx=(10, 0))
-        ctk.CTkLabel(title_col, text="Asilo", font=ctk.CTkFont(size=17, weight="bold"), text_color=CLR_TEXT).pack(anchor="w")
-        ctk.CTkLabel(title_col, text="Sistema de Gestión", font=ctk.CTkFont(size=10), text_color=CLR_MUTED).pack(anchor="w")
+        ctk.CTkLabel(title_col, text="CREAN", font=ctk.CTkFont(size=17, weight="bold"), text_color=CLR_TEXT).pack(anchor="w")
+        ctk.CTkLabel(title_col, text="Sistema de Gestión de Asilo", font=ctk.CTkFont(size=10), text_color=CLR_MUTED).pack(anchor="w")
 
         # ── Separador ─────────────────────────────────────────────────────────
         ctk.CTkFrame(sb, fg_color=CLR_SIDEBAR_LINE, height=1).grid(row=1, column=0, sticky="ew", padx=16, pady=(20, 8))
@@ -119,7 +119,7 @@ class Dashboard(ctk.CTk):
         avatar = ctk.CTkFrame(footer, fg_color=CLR_SKY_DARK, corner_radius=20, width=36, height=36)
         avatar.pack(side="left")
         avatar.pack_propagate(False)
-        ctk.CTkLabel(avatar, text=ROL_ICONS.get(rol, "👤"),
+        ctk.CTkLabel(avatar, text=ROL_ICONS.get(rol, "◯"),
                      font=ctk.CTkFont(size=16)).place(relx=.5, rely=.5, anchor="center")
 
         info = ctk.CTkFrame(footer, fg_color="transparent")
@@ -161,7 +161,7 @@ class Dashboard(ctk.CTk):
         text_lbl.grid(row=0, column=1, sticky="w", padx=6)
 
         if not allowed:
-            lock = ctk.CTkLabel(btn_frame, text="🔒", font=ctk.CTkFont(size=10),
+            lock = ctk.CTkLabel(btn_frame, text="◉", font=ctk.CTkFont(size=10),
                                 text_color=CLR_LOCKED_TEXT, width=20)
             lock.grid(row=0, column=2, padx=(0, 8))
             return  # sin interacción
@@ -252,7 +252,7 @@ class Dashboard(ctk.CTk):
                              border_width=1, border_color="#e2e8f0", width=420, height=200)
         inner.grid(row=0, column=0)
         inner.grid_propagate(False)
-        ctk.CTkLabel(inner, text="🚧", font=ctk.CTkFont(size=40)).pack(pady=(28, 6))
+        ctk.CTkLabel(inner, text="◌", font=ctk.CTkFont(size=40)).pack(pady=(28, 6))
         ctk.CTkLabel(inner, text=f"Módulo '{label_map.get(key, key)}' en desarrollo",
                      font=ctk.CTkFont(size=15, weight="bold"), text_color=CLR_TEXT).pack()
         ctk.CTkLabel(inner, text="Próximamente — Sprint en desarrollo",
@@ -267,7 +267,7 @@ class Dashboard(ctk.CTk):
                              border_width=1, border_color="#e2e8f0", width=380, height=180)
         inner.grid(row=0, column=0)
         inner.grid_propagate(False)
-        ctk.CTkLabel(inner, text="🔒", font=ctk.CTkFont(size=36)).pack(pady=(28, 6))
+        ctk.CTkLabel(inner, text="◉", font=ctk.CTkFont(size=36)).pack(pady=(28, 6))
         ctk.CTkLabel(inner, text=msg, font=ctk.CTkFont(size=14, weight="bold"),
                      text_color=CLR_TEXT).pack()
         return frame

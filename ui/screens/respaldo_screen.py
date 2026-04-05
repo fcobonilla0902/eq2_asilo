@@ -58,7 +58,7 @@ class RespaldoScreen(ctk.CTkFrame):
         # Título izquierda
         left = ctk.CTkFrame(hdr, fg_color="transparent")
         left.grid(row=0, column=0, padx=28, pady=16, sticky="w")
-        ctk.CTkLabel(left, text="💾  Respaldo y Restauración",
+        ctk.CTkLabel(left, text="Respaldo y Restauración",
                      font=ctk.CTkFont(size=20, weight="bold"),
                      text_color=CLR_TEXT).pack(side="left")
         ctk.CTkLabel(left, text="Solo administradores",
@@ -69,7 +69,7 @@ class RespaldoScreen(ctk.CTkFrame):
         right = ctk.CTkFrame(hdr, fg_color="transparent")
         right.grid(row=0, column=2, padx=28, pady=16, sticky="e")
         ctk.CTkButton(
-            right, text="➕  Respaldar ahora",
+            right, text="+  Respaldar ahora",
             fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
             text_color=CLR_WHITE, font=ctk.CTkFont(size=13, weight="bold"),
             height=38, corner_radius=10,
@@ -127,9 +127,9 @@ class RespaldoScreen(ctk.CTkFrame):
         self._var_ultimo  = ctk.StringVar(value="—")
         self._var_tamano  = ctk.StringVar(value="—")
 
-        _celda(0, "📦", "Total de respaldos",  self._var_total,  CLR_SKY_DARK)
-        _celda(1, "🕐", "Último respaldo",     self._var_ultimo, CLR_GREEN)
-        _celda(2, "📁", "Espacio utilizado",   self._var_tamano, CLR_AMBER)
+        _celda(0, "▦", "Total de respaldos",  self._var_total,  CLR_SKY_DARK)
+        _celda(1, "◷", "Último respaldo",     self._var_ultimo, CLR_GREEN)
+        _celda(2, "▶", "Espacio utilizado",   self._var_tamano, CLR_AMBER)
 
         # Separador vertical entre celdas
         for col in [1, 2]:
@@ -141,17 +141,23 @@ class RespaldoScreen(ctk.CTkFrame):
         hdr = ctk.CTkFrame(parent, fg_color=CLR_SKY_LIGHT, corner_radius=8, height=36)
         hdr.grid(row=2, column=0, sticky="ew", pady=(0, 2))
         hdr.grid_propagate(False)
-        hdr.grid_columnconfigure(1, weight=1)
 
-        cols = [("  #", 40), ("Nombre del archivo", 0),
-                ("Fecha", 160), ("Tamaño", 90), ("Acciones", 200)]
-        for i, (txt, w) in enumerate(cols):
-            kw = {"weight": 1} if w == 0 else {"minsize": w}
-            hdr.grid_columnconfigure(i, **kw)
-            ctk.CTkLabel(hdr, text=txt,
-                         font=ctk.CTkFont(size=11, weight="bold"),
-                         text_color=CLR_TEXT_SOFT).grid(
-                             row=0, column=i, sticky="w", padx=10, pady=8)
+        # ← Misma configuración que _build_fila
+        cols_cfg = [40, 0, 180, 110, 200]
+        for c, w in enumerate(cols_cfg):
+            if w == 0:
+                hdr.grid_columnconfigure(c, weight=1)
+            else:
+                hdr.grid_columnconfigure(c, weight=0, minsize=w)
+
+        labels = ["#", "Nombre del archivo", "Fecha", "", "Acciones"]
+        for i, txt in enumerate(labels):
+            ctk.CTkLabel(
+                hdr,
+                text=txt,
+                font=ctk.CTkFont(size=11, weight="bold"),
+                text_color=CLR_TEXT_SOFT
+            ).grid(row=0, column=i, sticky="w", padx=10, pady=8)
 
     # ── Cargar / refrescar lista ─────────────────────────────────────────────
     def _cargar_lista(self):
@@ -192,7 +198,7 @@ class RespaldoScreen(ctk.CTkFrame):
         sep = ctk.CTkFrame(fila, fg_color=CLR_BORDER, height=1)
         sep.place(relx=0, rely=1.0, relwidth=1, anchor="sw")
 
-        cols_cfg = [40, 0, 160, 90, 200]
+        cols_cfg = [40, 0, 180, 110, 200]
         for c, w in enumerate(cols_cfg):
             if w == 0:
                 fila.grid_columnconfigure(c, weight=1)
@@ -207,8 +213,6 @@ class RespaldoScreen(ctk.CTkFrame):
         # Nombre archivo (con ícono)
         nombre_frame = ctk.CTkFrame(fila, fg_color="transparent")
         nombre_frame.grid(row=0, column=1, sticky="w", padx=4, pady=8)
-        ctk.CTkLabel(nombre_frame, text="🗃️",
-                     font=ctk.CTkFont(size=14)).pack(side="left")
         ctk.CTkLabel(nombre_frame, text=datos["nombre"],
                      font=ctk.CTkFont(size=12), text_color=CLR_TEXT).pack(
                          side="left", padx=(6, 0))
@@ -228,7 +232,7 @@ class RespaldoScreen(ctk.CTkFrame):
         acc.grid(row=0, column=4, sticky="e", padx=12, pady=8)
 
         ctk.CTkButton(
-            acc, text="↩  Restaurar",
+            acc, text="Restaurar",
             fg_color=CLR_AMBER_LIGHT, hover_color="#fde68a",
             text_color="#92400e", font=ctk.CTkFont(size=11, weight="bold"),
             height=30, corner_radius=8, width=110,
@@ -236,7 +240,7 @@ class RespaldoScreen(ctk.CTkFrame):
         ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
-            acc, text="🗑",
+            acc, text="✕",
             fg_color=CLR_RED_LIGHT, hover_color="#fecaca",
             text_color=CLR_RED, font=ctk.CTkFont(size=12),
             height=30, corner_radius=8, width=36,
@@ -258,9 +262,9 @@ class RespaldoScreen(ctk.CTkFrame):
         self._set_estado_boton(activo=True)
         if ruta:
             self._cargar_lista()
-            self._mostrar_toast("✅  Respaldo creado correctamente", CLR_GREEN_LIGHT, "#166534")
+            self._mostrar_toast("✔  Respaldo creado correctamente", CLR_GREEN_LIGHT, "#166534")
         else:
-            self._mostrar_toast("❌  Error al crear el respaldo — revisa el log", CLR_RED_LIGHT, CLR_RED)
+            self._mostrar_toast("✖  Error al crear el respaldo — revisa el log", CLR_RED_LIGHT, CLR_RED)
 
     def _set_estado_boton(self, activo: bool):
         """Habilita / deshabilita el botón «Respaldar ahora» durante la operación."""
@@ -322,7 +326,7 @@ class RespaldoScreen(ctk.CTkFrame):
         dialog.configure(fg_color=CLR_WHITE)
         dialog.resizable(False, False)
 
-        ctk.CTkLabel(dialog, text="🗑️", font=ctk.CTkFont(size=34)).pack(pady=(22, 4))
+        ctk.CTkLabel(dialog, text="✕", font=ctk.CTkFont(size=34)).pack(pady=(22, 4))
         ctk.CTkLabel(dialog, text="¿Eliminar este respaldo?",
                      font=ctk.CTkFont(size=15, weight="bold"),
                      text_color=CLR_TEXT).pack()
@@ -343,7 +347,7 @@ class RespaldoScreen(ctk.CTkFrame):
             try:
                 ruta.unlink()
                 self._cargar_lista()
-                self._mostrar_toast("🗑️  Respaldo eliminado", CLR_SKY_LIGHT, CLR_SKY_XDARK)
+                self._mostrar_toast("✕  Respaldo eliminado", CLR_SKY_LIGHT, CLR_SKY_XDARK)
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo eliminar:\n{e}")
 

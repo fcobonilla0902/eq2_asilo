@@ -24,9 +24,9 @@ ROL_LABELS = {
 }
 
 ROL_ICONS = {
-    "admin":     "🛡️",
-    "enfermero": "💉",
-    "doctor":    "🩺",
+    "admin":     "◈",
+    "enfermero": "⊕",
+    "doctor":    "◎",
 }
 
 
@@ -68,13 +68,13 @@ class LoginScreen(ctk.CTkFrame):
                                 width=72, height=72)
         icon_box.place(relx=0.5, y=70, anchor="center")
         icon_box.pack_propagate(False)
-        ctk.CTkLabel(icon_box, text="🏥", font=ctk.CTkFont(size=36)).place(
+        ctk.CTkLabel(icon_box, text="✚", font=ctk.CTkFont(size=36)).place(
             relx=.5, rely=.5, anchor="center")
 
-        ctk.CTkLabel(left, text="Asilo",
+        ctk.CTkLabel(left, text="CREAN",
                      font=ctk.CTkFont(size=28, weight="bold"),
                      text_color=CLR_WHITE).place(relx=0.5, y=140, anchor="center")
-        ctk.CTkLabel(left, text="Sistema de Gestión",
+        ctk.CTkLabel(left, text="Sistema de Gestión de Asilo",
                      font=ctk.CTkFont(size=13),
                      text_color="#bae6fd").place(relx=0.5, y=165, anchor="center")
 
@@ -152,7 +152,7 @@ class LoginScreen(ctk.CTkFrame):
         # Mostrar / ocultar contraseña
         self._show_pw = False
         ctk.CTkButton(
-            form, text="👁 Mostrar contraseña",
+            form, text="◉ Mostrar contraseña",
             fg_color="transparent", hover_color=CLR_SKY_LIGHT,
             text_color=CLR_MUTED, font=ctk.CTkFont(size=11),
             height=24, cursor="hand2",
@@ -213,5 +213,5 @@ class LoginScreen(ctk.CTkFrame):
             self.btn_login.configure(text="Iniciar sesión", state="normal")
 
     def _set_error(self, msg: str):
-        self.lbl_error.configure(text=f"⚠  {msg}")
+        self.lbl_error.configure(text=f"▲  {msg}")
         self.btn_login.configure(text="Iniciar sesión", state="normal")
