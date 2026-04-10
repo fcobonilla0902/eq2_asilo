@@ -24,9 +24,9 @@ ROL_LABELS = {
 }
 
 ROL_ICONS = {
-    "admin":     "◈",
-    "enfermero": "⊕",
-    "doctor":    "◎",
+    "admin":     "◉",
+    "enfermero": "◉",
+    "doctor":    "◉",
 }
 
 

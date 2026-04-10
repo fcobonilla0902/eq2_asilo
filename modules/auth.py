@@ -60,20 +60,22 @@ def inicializar_modulo_auth():
         )
     """)
 
-    pw = _hash("123")
-    semilla = [
-        ("admin",      pw, "admin",     "Administrador",    "8110000001"),
-        ("enfermero1", pw, "enfermero", "María García",     "8110000002"),
-        ("doctor1",    pw, "doctor",    "Dr. Carlos López", "8110000003"),
-    ]
-    for usuario, ph, rol, nombre, telefono in semilla:
-        try:
-            cursor.execute(
-                "INSERT INTO usuarios (usuario, password_hash, rol, nombre, telefono) VALUES (?,?,?,?,?)",
-                (usuario, ph, rol, nombre, telefono),
-            )
-        except Exception:
-            pass
+    # Solo sembrar si no hay ningún usuario aún
+    cursor.execute("SELECT COUNT(*) FROM usuarios")
+    if cursor.fetchone()[0] == 0:
+        semilla = [
+            ("admin",      pw, "admin",     "Administrador",    "8110000001"),
+            ("enfermero1", pw, "enfermero", "María García",     "8110000002"),
+            ("doctor1",    pw, "doctor",    "Dr. Carlos López", "8110000003"),
+        ]
+        for usuario, ph, rol, nombre, telefono in semilla:
+            try:
+                cursor.execute(
+                    "INSERT INTO usuarios (usuario, password_hash, rol, nombre, telefono) VALUES (?,?,?,?,?)",
+                    (usuario, ph, rol, nombre, telefono),
+                )
+            except Exception:
+                pass
 
     conn.commit()
     conn.close()
@@ -170,6 +172,3 @@ def toggle_activo(id_usuario: int) -> bool:
         return True
     except Exception:
         return False
-
-
-inicializar_modulo_auth()
