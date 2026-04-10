@@ -22,7 +22,7 @@ ROL_COLOR = {
     "enfermero": ("#d1fae5", "#065f46"),
     "doctor":    ("#fef3c7", "#92400e"),
 }
-ROL_ICON = {"admin": "◈", "enfermero": "⊕", "doctor": "◎"}
+ROL_ICON = {"admin": "◉", "enfermero": "◉", "doctor": "◉"}
 AVATAR_COLORS = ["#6366f1","#8b5cf6","#ec4899","#0ea5e9","#14b8a6","#22c55e","#f59e0b"]
 
 def _iniciales(n):
@@ -223,14 +223,14 @@ class UsuariosScreen(ctk.CTkFrame):
             password = fields["Contraseña"].get()
             rol      = rol_var.get()
             if not all([nombre, usuario, password]):
-                lbl_msg.configure(text="▲ Nombre, usuario y contraseña son obligatorios.")
+                lbl_msg.configure(text="Nombre, usuario y contraseña son obligatorios.")
                 return
             ok = crear_usuario(usuario, password, rol, nombre, telefono)
             if ok:
                 dlg.destroy()
                 self._load_data()
             else:
-                lbl_msg.configure(text="▲ El usuario ya existe o hubo un error.")
+                lbl_msg.configure(text="El usuario ya existe o hubo un error.")
 
         btn_bar = ctk.CTkFrame(dlg, fg_color=CLR_WHITE, corner_radius=0)
         btn_bar.pack(fill="x", pady=(6, 16))
@@ -262,7 +262,7 @@ class UsuariosScreen(ctk.CTkFrame):
         dlg.configure(fg_color=CLR_WHITE)
         dlg.resizable(False, False)
 
-        ctk.CTkLabel(dlg, text="⊛  Nueva Contraseña",
+        ctk.CTkLabel(dlg, text="Nueva Contraseña",
                      font=ctk.CTkFont(size=15, weight="bold"),
                      text_color=CLR_TEXT).pack(pady=(24, 4))
         ctk.CTkFrame(dlg, fg_color=CLR_BORDER, height=1).pack(fill="x", padx=24, pady=(12, 16))
@@ -276,7 +276,7 @@ class UsuariosScreen(ctk.CTkFrame):
         def _guardar():
             pw = e.get()
             if len(pw) < 3:
-                lbl_msg.configure(text="▲ Mínimo 3 caracteres.")
+                lbl_msg.configure(text="Mínimo 3 caracteres.")
                 return
             cambiar_password(id_usuario, pw)
             dlg.destroy()
@@ -362,7 +362,7 @@ class UsuariosScreen(ctk.CTkFrame):
             telefono = fields["Teléfono"].get().strip()
             rol      = rol_var.get()
             if not nombre or not usuario:
-                lbl_msg.configure(text="▲ Nombre y usuario son obligatorios.")
+                lbl_msg.configure(text="Nombre y usuario son obligatorios.")
                 return
             try:
                 conn = get_connection()
@@ -375,7 +375,7 @@ class UsuariosScreen(ctk.CTkFrame):
                 dlg.destroy()
                 self._load_data()
             except Exception as ex:
-                lbl_msg.configure(text=f"▲ Error: {ex}")
+                lbl_msg.configure(text=f"Error: {ex}")
 
         btn_bar = ctk.CTkFrame(dlg, fg_color=CLR_WHITE, corner_radius=0)
         btn_bar.pack(fill="x", pady=(6, 16))
@@ -410,7 +410,7 @@ class UsuariosScreen(ctk.CTkFrame):
             dlg.grab_set()
             dlg.configure(fg_color=CLR_WHITE)
             dlg.resizable(False, False)
-            ctk.CTkLabel(dlg, text="▲  No puedes eliminarte a ti mismo.",
+            ctk.CTkLabel(dlg, text="No puedes eliminarte a ti mismo.",
                          font=ctk.CTkFont(size=13, weight="bold"),
                          text_color=CLR_TEXT).pack(pady=(36, 8))
             ctk.CTkButton(dlg, text="Entendido", height=36, corner_radius=8,
@@ -449,13 +449,36 @@ class UsuariosScreen(ctk.CTkFrame):
         def _eliminar():
             try:
                 conn = get_connection()
+                # Desvincular registros históricos antes de eliminar
+                # para no perder el historial médico ni violar las FK
+                conn.execute(
+                    "UPDATE medicaciones SET id_enfermero = NULL WHERE id_enfermero = ?",
+                    (id_usuario,))
+                conn.execute(
+                    "UPDATE signos_vitales SET id_enfermero = NULL WHERE id_enfermero = ?",
+                    (id_usuario,))
                 conn.execute("DELETE FROM usuarios WHERE id = ?", (id_usuario,))
                 conn.commit()
                 conn.close()
-            except Exception:
-                pass
-            dlg.destroy()
-            self._load_data()
+                dlg.destroy()
+                self._load_data()
+            except Exception as ex:
+                dlg.destroy()
+                err = ctk.CTkToplevel(self)
+                err.title("")
+                err.geometry("360x160")
+                err.grab_set()
+                err.configure(fg_color=CLR_WHITE)
+                err.resizable(False, False)
+                ctk.CTkLabel(err, text="Error al eliminar",
+                             font=ctk.CTkFont(size=14, weight="bold"),
+                             text_color=CLR_RED).pack(pady=(28, 6))
+                ctk.CTkLabel(err, text=str(ex),
+                             font=ctk.CTkFont(size=11),
+                             text_color=CLR_TEXT_SOFT, wraplength=300).pack()
+                ctk.CTkButton(err, text="Cerrar", height=36, corner_radius=8,
+                              fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
+                              command=err.destroy).pack(padx=32, pady=14, fill="x")
 
         ctk.CTkButton(row, text="Sí, eliminar", fg_color=CLR_RED,
                       hover_color="#dc2626", text_color=CLR_WHITE,

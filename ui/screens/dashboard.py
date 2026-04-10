@@ -24,20 +24,20 @@ ROL_LABELS = {
     "doctor":    "Doctor/a",
 }
 ROL_ICONS = {
-    "admin":     "◈",
-    "enfermero": "⊕",
-    "doctor":    "◎",
+    "admin":     "◉",
+    "enfermero": "◉",
+    "doctor":    "◉",
 }
 
 # (key, icon, label, modulo_permiso)
 NAV_ITEMS = [
-    ("residentes",     "◯", "Residentes",     "residentes"),
-    ("medicaciones",   "⊕", "Medicaciones",   "medicaciones"),
-    ("habitaciones",   "▣", "Habitaciones",   "habitaciones"),
-    ("signos_vitales", "≈", "Signos Vitales", "signos_vitales"),
-    ("actividades",    "◆", "Actividades",    "actividades"),
+    ("residentes",     "◉", "Residentes",     "residentes"),
+    ("medicaciones",   "◉", "Medicaciones",   "medicaciones"),
+    ("habitaciones",   "◉", "Habitaciones",   "habitaciones"),
+    ("signos_vitales", "◉", "Signos Vitales", "signos_vitales"),
+    ("actividades",    "◉", "Actividades",    "actividades"),
     ("usuarios",       "◉", "Usuarios",       "usuarios"),
-    ("respaldo",       "▦", "Respaldo BD",    "respaldo"),
+    ("respaldo",       "◉", "Respaldo BD",    "respaldo"),
 ]
 
 
@@ -133,7 +133,7 @@ class Dashboard(ctk.CTk):
 
         # ── Cerrar sesión ─────────────────────────────────────────────────────
         ctk.CTkButton(
-            sb, text="⏻  Cerrar sesión",
+            sb, text="Cerrar sesión",
             fg_color="#fee2e2", hover_color="#fecaca",
             text_color="#dc2626", font=ctk.CTkFont(size=12, weight="bold"),
             corner_radius=10, height=36,
@@ -280,7 +280,7 @@ class Dashboard(ctk.CTk):
         dialog.grab_set()
         dialog.configure(fg_color=CLR_WHITE)
         dialog.resizable(False, False)
-        ctk.CTkLabel(dialog, text="⏻", font=ctk.CTkFont(size=34)).pack(pady=(22, 4))
+        ctk.CTkLabel(dialog, text="", font=ctk.CTkFont(size=34)).pack(pady=(22, 4))
         ctk.CTkLabel(dialog, text="¿Cerrar sesión?",
                      font=ctk.CTkFont(size=15, weight="bold"), text_color=CLR_TEXT).pack()
         ctk.CTkLabel(dialog, text="Se cerrará la aplicación.",

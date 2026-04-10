@@ -54,10 +54,10 @@ def _pick_file(parent, title="Seleccionar imagen"):
     except Exception:
         return None
 
-def _save_file(src_path, id_residente="0", campo="doc"):
+def _save_file(src_path, curp="sin_curp", campo="doc"):
     if not src_path:
         return None
-    dest_folder = os.path.join("uploads", f"residente_{id_residente}")
+    dest_folder = os.path.join("uploads", curp.upper())
     os.makedirs(dest_folder, exist_ok=True)
     ext      = os.path.splitext(src_path)[1]
     filename = f"{campo}{ext}"
@@ -128,7 +128,7 @@ class ResidentesScreen(ctk.CTkFrame):
         sf.grid_columnconfigure((0,1,2), weight=1)
         self._stat_total = self._stat_card(sf, 0, "Total residentes", "0", "◈", CLR_SKY_DARK, "#dbeafe")
         self._stat_con   = self._stat_card(sf, 1, "Con habitación",   "0", "▣", "#10b981",   "#d1fae5")
-        self._stat_sin   = self._stat_card(sf, 2, "Sin habitación",   "0", "▤", CLR_AMBER,   CLR_AMBER_LIGHT)
+        self._stat_sin   = self._stat_card(sf, 2, "Sin habitación",   "0", "◉", CLR_AMBER,   CLR_AMBER_LIGHT)
 
     def _stat_card(self, parent, col, title, value, icon, ic, ib):
         card = ctk.CTkFrame(parent, fg_color=CLR_WHITE, corner_radius=14,
@@ -154,13 +154,14 @@ class ResidentesScreen(ctk.CTkFrame):
         wrap.grid_rowconfigure(1, weight=1)
         wrap.grid_columnconfigure(0, weight=1)
 
-        HDR_COLS   = ["ID",  "Residente", "CURP",  "Edad", "Sangre", "Habitación", "Registro"]
-        HDR_WIDTHS = [ 52,    190,         155,     52,     70,       115,           100      ]
+        HDR_COLS   = ["Residente", "CURP", "Edad", "Sangre", "Habitación", "Registro"]
+        HDR_WIDTHS = [370,         175,    52,     50,       125,          80] 
 
         hdr = ctk.CTkFrame(wrap, fg_color=CLR_BG, corner_radius=0, height=40)
         hdr.grid(row=0, column=0, sticky="ew")
 
-        ctk.CTkLabel(hdr, text="", width=56).grid(row=0, column=0)
+        # El Label vacío que servía de padding para el ID ya no es necesario o puede ser menor
+        ctk.CTkLabel(hdr, text="", width=15).grid(row=0, column=0)
 
         for c, (col_name, w) in enumerate(zip(HDR_COLS, HDR_WIDTHS)):
             ctk.CTkLabel(hdr, text=col_name.upper(),
@@ -246,57 +247,48 @@ class ResidentesScreen(ctk.CTkFrame):
             ctk.CTkLabel(e, text="⌕", font=ctk.CTkFont(size=32)).pack()
             ctk.CTkLabel(e, text="Sin resultados",
                          font=ctk.CTkFont(size=14, weight="bold"), text_color=CLR_TEXT_SOFT).pack(pady=(6,2))
-            ctk.CTkLabel(e, text="Intenta con otro término",
-                         font=ctk.CTkFont(size=11), text_color=CLR_MUTED).pack()
             return
 
         for idx, row in enumerate(rows):
             if isinstance(row, dict):
-                rid    = row.get("id_residente")
-                nombre = row.get("nombre",         "—") or "—"
-                curp   = row.get("curp",           "—") or "—"
-                edad   = str(row.get("edad",       "—") or "—")
-                sangre = row.get("tipo_sangre",    "—") or "—"
+                rid    = row.get("id_residente") # El ID se guarda en la variable
+                nombre = row.get("nombre", "—") or "—"
+                curp   = row.get("curp", "—") or "—"
+                edad   = str(row.get("edad", "—") or "—")
+                sangre = row.get("tipo_sangre", "—") or "—"
                 hab    = row.get("habitacion_numero") or None
                 fecha  = row.get("fecha_registro", "—") or "—"
             else:
-                rid    = row[0]
-                nombre = row[1] or "—"
-                curp   = row[2] or "—"
-                edad   = str(row[3] or "—")
-                sangre = row[4] or "—"
-                fecha  = row[5] or "—"
-                hab    = row[6] if len(row) > 6 else None
+                rid, nombre, curp, edad, sangre, fecha = row[0], row[1], row[2], row[3], row[4], row[5]
+                hab = row[6] if len(row) > 6 else None
 
             bg = CLR_WHITE if idx % 2 == 0 else CLR_ROW_ALT
             rf = ctk.CTkFrame(self._table, fg_color=bg, corner_radius=0, height=52)
             rf.grid(row=idx, column=0, sticky="ew")
 
-            def _bind(w, r=rid, f=rf):
-                w.bind("<Button-1>", lambda e, _r=r, _f=f: self._select(_r, _f))
-                w.configure(cursor="hand2")
+            # Función para capturar el ID actual en el clic
+            def _bind_click(widget, current_id=rid, current_frame=rf):
+                widget.bind("<Button-1>", lambda e: self._select(current_id, current_frame))
+                widget.configure(cursor="hand2")
 
-            av = ctk.CTkFrame(rf, fg_color=_avatar_color(nombre),
-                              corner_radius=18, width=36, height=36)
-            av.grid(row=0, column=0, padx=(14, 4), pady=8)
+            _bind_click(rf)
+
+            # Avatar (Columna 0 visual)
+            av = ctk.CTkFrame(rf, fg_color=_avatar_color(nombre), corner_radius=18, width=36, height=36)
+            av.grid(row=0, column=0, padx=(14, 10), pady=8)
             av.grid_propagate(False)
-            av_l = ctk.CTkLabel(av, text=_iniciales(nombre),
-                                font=ctk.CTkFont(size=12, weight="bold"),
-                                text_color=CLR_WHITE)
+            av_l = ctk.CTkLabel(av, text=_iniciales(nombre), font=ctk.CTkFont(size=12, weight="bold"), text_color=CLR_WHITE)
             av_l.place(relx=.5, rely=.5, anchor="center")
-            _bind(av); _bind(av_l); _bind(rf)
+            _bind_click(av); _bind_click(av_l)
 
-            hab_txt   = f"Hab. {hab}" if hab else "Sin habitación"
-            hab_color = CLR_MUTED if not hab else CLR_TEXT_SOFT
-
+            # Datos (Quitamos el ID de esta lista para que no se cree el Label)
             datos_cols = [
-                (str(rid),  52,    CLR_MUTED,      "center"),
-                (nombre,    190,   CLR_TEXT,        "w"),
-                (curp,      155,   CLR_TEXT_SOFT,   "w"),
-                (edad,      52,    CLR_TEXT_SOFT,   "center"),
-                (sangre,    70,    CLR_TEXT_SOFT,   "center"),
-                (hab_txt,   115,   hab_color,       "w"),
-                (fecha,     100,   CLR_MUTED,       "center"),
+                (nombre,  310, CLR_TEXT,      "w"),
+                (curp,    175, CLR_TEXT_SOFT, "w"),
+                (edad,    52,  CLR_TEXT_SOFT, "center"),
+                (sangre,  70,  CLR_TEXT_SOFT, "center"),
+                (f"Hab. {hab}" if hab else "Sin hab.", 115, CLR_TEXT_SOFT, "w"),
+                (fecha,   80,  CLR_MUTED,     "center"),
             ]
 
             for c, (val, w, color, anchor) in enumerate(datos_cols):
@@ -305,7 +297,7 @@ class ResidentesScreen(ctk.CTkFrame):
                                    text_color=color,
                                    width=w, anchor=anchor)
                 lbl.grid(row=0, column=c + 1, padx=(0, 4), sticky="w")
-                _bind(lbl)
+                _bind_click(lbl)
 
     # ── Selección ─────────────────────────────────────────────────────────────
     def _select(self, rid, frame):
@@ -685,7 +677,7 @@ class ResidentesScreen(ctk.CTkFrame):
                     t_lbl.configure(text_color=CLR_MUTED, font=ctk.CTkFont(size=10))
             btn_back.configure(state="normal" if i > 0 else "disabled")
             if i == len(STEPS) - 1:
-                btn_next.configure(text="▦  Guardar", fg_color="#16a34a",
+                btn_next.configure(text="Guardar", fg_color="#16a34a",
                                    hover_color="#15803d", command=_save)
             else:
                 btn_next.configure(text="Siguiente →", fg_color=CLR_SKY_DARK,
@@ -743,7 +735,7 @@ class ResidentesScreen(ctk.CTkFrame):
             alert.configure(fg_color=CLR_WHITE)
             alert.resizable(False, False)
             _center(alert, 360, 180)
-            ctk.CTkLabel(alert, text="▲", font=ctk.CTkFont(size=36)).pack(pady=(18,4))
+            ctk.CTkLabel(alert, text="", font=ctk.CTkFont(size=36)).pack(pady=(18,4))
             ctk.CTkLabel(alert, text="Campo requerido",
                          font=ctk.CTkFont(size=14, weight="bold"), text_color=CLR_TEXT).pack()
             ctk.CTkLabel(alert, text=msg, font=ctk.CTkFont(size=11),
@@ -799,12 +791,10 @@ class ResidentesScreen(ctk.CTkFrame):
                     datos_res["id_familiar"] = id_familiar
 
                 if edit:
-                    # En edición conocemos el ID desde el principio
-                    id_res = str(datos_edicion["id_residente"])
+                    curp_res = entries.get("curp").get().strip() or datos_edicion.get("curp", "sin_curp")
                     fam_ine = img_paths.get("fam_foto_ine")
                     if fam_ine and fam_ine.get():
-                        fam_datos["foto_ine"] = _save_file(fam_ine.get(), id_res, "familiar_foto_ine")
-                        # Actualizar foto_ine del familiar
+                        fam_datos["foto_ine"] = _save_file(fam_ine.get(), curp_res, "familiar_foto_ine")
                         conn2 = get_connection()
                         conn2.execute("UPDATE familiares SET foto_ine=? WHERE id_familiar=?",
                                       (fam_datos["foto_ine"], id_familiar))
@@ -813,7 +803,7 @@ class ResidentesScreen(ctk.CTkFrame):
 
                     for key, var in img_paths.items():
                         if var.get() and key != "fam_foto_ine":
-                            saved = _save_file(var.get(), id_res, key)
+                            saved = _save_file(var.get(), curp_res, key)
                             if saved: datos_res[key] = saved
 
                     from modules.residentes import actualizar_residente
@@ -821,17 +811,15 @@ class ResidentesScreen(ctk.CTkFrame):
                     self._toast("Residente actualizado")
 
                 else:
-                    # Crear sin archivos primero para obtener el ID real
                     from modules.residentes import crear_residente, actualizar_residente
                     id_nuevo = crear_residente(datos_res)
 
-                    # Ahora guardar archivos con el ID real y actualizar registros
-                    id_res = str(id_nuevo)
+                    curp_res = entries.get("curp").get().strip() or "sin_curp"
                     rutas_archivos = {}
 
                     fam_ine = img_paths.get("fam_foto_ine")
                     if fam_ine and fam_ine.get():
-                        ruta_fam = _save_file(fam_ine.get(), id_res, "familiar_foto_ine")
+                        ruta_fam = _save_file(fam_ine.get(), curp_res, "familiar_foto_ine")
                         conn3 = get_connection()
                         conn3.execute("UPDATE familiares SET foto_ine=? WHERE id_familiar=?",
                                       (ruta_fam, id_familiar))
@@ -840,7 +828,7 @@ class ResidentesScreen(ctk.CTkFrame):
 
                     for key, var in img_paths.items():
                         if var.get() and key != "fam_foto_ine":
-                            saved = _save_file(var.get(), id_res, key)
+                            saved = _save_file(var.get(), curp_res, key)
                             if saved: rutas_archivos[key] = saved
 
                     if rutas_archivos:
@@ -946,7 +934,7 @@ class ResidentesScreen(ctk.CTkFrame):
         dialog.configure(fg_color=CLR_WHITE)
         dialog.resizable(False, False)
         _center(dialog, 380, 200)
-        ctk.CTkLabel(dialog, text="▲", font=ctk.CTkFont(size=36)).pack(pady=(24,4))
+        ctk.CTkLabel(dialog, text="", font=ctk.CTkFont(size=36)).pack(pady=(24,4))
         ctk.CTkLabel(dialog, text="¿Eliminar este residente?",
                      font=ctk.CTkFont(size=15, weight="bold"), text_color=CLR_TEXT).pack()
         ctk.CTkLabel(dialog, text="Esta acción es permanente.",
@@ -956,12 +944,13 @@ class ResidentesScreen(ctk.CTkFrame):
 
         def _do():
             try:
-                from modules.residentes import eliminar_residente
+                from modules.residentes import eliminar_residente, obtener_residente
+                r = obtener_residente(self._selected_id)
+                curp_del = (dict(r).get("curp") or "").strip().upper() if r else ""
                 eliminar_residente(self._selected_id)
 
-                # ── CAMBIO: eliminar carpeta de imágenes con nombre correcto ──
-                carpeta = os.path.join("uploads", f"residente_{self._selected_id}")
-                if os.path.isdir(carpeta):
+                carpeta = os.path.join("uploads", curp_del) if curp_del else None
+                if carpeta and os.path.isdir(carpeta):
                     shutil.rmtree(carpeta)
 
                 self._toast("Residente eliminado")

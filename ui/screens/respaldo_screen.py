@@ -127,7 +127,7 @@ class RespaldoScreen(ctk.CTkFrame):
         self._var_ultimo  = ctk.StringVar(value="—")
         self._var_tamano  = ctk.StringVar(value="—")
 
-        _celda(0, "▦", "Total de respaldos",  self._var_total,  CLR_SKY_DARK)
+        _celda(0, "◉", "Total de respaldos",  self._var_total,  CLR_SKY_DARK)
         _celda(1, "◷", "Último respaldo",     self._var_ultimo, CLR_GREEN)
         _celda(2, "▶", "Espacio utilizado",   self._var_tamano, CLR_AMBER)
 

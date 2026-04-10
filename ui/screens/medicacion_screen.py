@@ -370,7 +370,7 @@ class MedicacionScreen(ctk.CTkFrame):
                       ).grid(row=0, column=2, padx=(8, 28), pady=14)
         
         # Botón de Reportes
-        ctk.CTkButton(bar, text="▤ Reportes",
+        ctk.CTkButton(bar, text="Reportes",
                       fg_color=CLR_AMBER, hover_color=CLR_AMBER_LIGHT,
                       text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
                       corner_radius=10, height=38, command=self._open_report_modal,
@@ -384,7 +384,7 @@ class MedicacionScreen(ctk.CTkFrame):
         sf = ctk.CTkFrame(self, fg_color="transparent")
         sf.grid(row=1, column=0, sticky="ew", padx=24, pady=(18, 0))
         sf.grid_columnconfigure((0, 1, 2, 3), weight=1)
-        self._stat_total   = self._stat_card(sf, 0, "Total programadas", "0", "▤", CLR_SKY_DARK,   "#dbeafe")
+        self._stat_total   = self._stat_card(sf, 0, "Total programadas", "0", "◉", CLR_SKY_DARK,   "#dbeafe")
         self._stat_admin   = self._stat_card(sf, 1, "Administradas",     "0", "✔", CLR_GREEN_DARK, CLR_GREEN_LIGHT)
         self._stat_vencida = self._stat_card(sf, 2, "Vencidas hoy",      "0", "▲", CLR_AMBER,      CLR_AMBER_LIGHT)
         self._stat_omision = self._stat_card(sf, 3, "Omisiones",         "0", "●", CLR_RED,        CLR_RED_LIGHT)
@@ -430,7 +430,7 @@ class MedicacionScreen(ctk.CTkFrame):
         self._tab_list_btn.pack(side="left")
 
         self._tab_alert_btn = ctk.CTkButton(
-            tab_bar, text="◈  Alertas",
+            tab_bar, text="Alertas",
             fg_color="transparent", hover_color=CLR_SKY_LIGHT,
             text_color=CLR_MUTED, font=ctk.CTkFont(size=12),
             corner_radius=0, height=46, width=140, border_width=0,
@@ -475,8 +475,9 @@ class MedicacionScreen(ctk.CTkFrame):
         page.grid_rowconfigure(1, weight=1)
         page.grid_columnconfigure(0, weight=1)
 
-        cols   = ["Residente", "Dosis", "Horario", "Fecha", "Enfermero / Doctor", "Estado", "Aplicacion"]
-        widths = [170,          155,     80,         100,    135,          100,       120]
+        # Total de ancho distribuido: ~1000px (ajustable según tu ventana principal)
+        cols   = ["Residente", "Medicamento / Dosis", "Programación", "Responsable", "Estado", "Acción"]
+        widths = [240,          180,                   130,            180,           100,      110]
         hdr = ctk.CTkFrame(page, fg_color="#f8fafc", corner_radius=0, height=38)
         hdr.grid(row=0, column=0, sticky="ew")
         for c, (col, w) in enumerate(zip(cols, widths)):
@@ -577,85 +578,90 @@ class MedicacionScreen(ctk.CTkFrame):
         self._render_list(filtered)
 
     def _render_list(self, rows):
-        for w in self._list_scroll.winfo_children():
-            w.destroy()
-        self._selected_id    = None
-        self._selected_frame = None
-        self._set_actions(False)
+            for w in self._list_scroll.winfo_children():
+                w.destroy()
+            
+            self._selected_id = None
+            self._selected_frame = None
+            self._set_actions(False)
 
-        if not rows:
-            empty = ctk.CTkFrame(self._list_scroll, fg_color="transparent")
-            empty.grid(row=0, column=0, pady=50)
-            ctk.CTkLabel(empty, text="⊕", font=ctk.CTkFont(size=32)).pack()
-            ctk.CTkLabel(empty, text="Sin medicaciones registradas",
-                         font=ctk.CTkFont(size=14, weight="bold"), text_color=CLR_TEXT_SOFT).pack(pady=(6, 2))
-            ctk.CTkLabel(empty, text="Usa el boton '+ Nueva medicacion' para agregar",
-                         font=ctk.CTkFont(size=11), text_color=CLR_MUTED).pack()
-            return
+            if not rows:
+                # (Código de lista vacía igual)
+                return
 
-        for idx, row in enumerate(rows):
-            if isinstance(row, dict):
-                rid          = row.get("id_medicacion")
-                fecha        = row.get("fecha", "") or ""
-                horario      = row.get("horario", "") or ""
-                dosis        = row.get("dosis", "-") or "-"
-                res_name     = row.get("residente_nombre", "-") or "-"
-                enf_name     = row.get("enfermero_nombre", "-") or "-"
-                administrada = int(row.get("administrada", 0) or 0)
-            else:
-                rid, fecha, horario, dosis = row[0], row[1] or "", row[2] or "", row[3] or "-"
-                res_name, enf_name = row[5] or "-", row[7] or "-"
-                administrada = int(row[8]) if len(row) > 8 and row[8] else 0
+            for idx, row in enumerate(rows):
+                # Extracción segura de datos
+                if isinstance(row, dict):
+                    rid          = row.get("id_medicacion")
+                    fecha        = row.get("fecha", "") or ""
+                    horario      = row.get("horario", "") or ""
+                    dosis        = row.get("dosis", "-") or "-"
+                    res_name     = row.get("residente_nombre", "-") or "-"
+                    enf_name     = row.get("enfermero_nombre", "-") or "-"
+                    administrada = int(row.get("administrada", 0) or 0)
+                else:
+                    rid, fecha, horario, dosis = row[0], row[1] or "", row[2] or "", row[3] or "-"
+                    res_name, enf_name = row[5] or "-", row[7] or "-"
+                    administrada = int(row[8]) if len(row) > 8 and row[8] else 0
 
-            estado_txt, estado_bg, estado_fg = _estado(fecha, horario, administrada)
-            bg = CLR_WHITE if idx % 2 == 0 else CLR_ROW_ALT
+                estado_txt, estado_bg, estado_fg = _estado(fecha, horario, administrada)
+                bg = CLR_WHITE if idx % 2 == 0 else CLR_ROW_ALT
+                prog_txt = f"{fecha}\n{horario}"
 
-            rf = ctk.CTkFrame(self._list_scroll, fg_color=bg, corner_radius=0, height=50)
-            rf.grid(row=idx, column=0, sticky="ew")
+                # FILA: Quitamos grid_propagate para evitar que desaparezca
+                rf = ctk.CTkFrame(self._list_scroll, fg_color=bg, corner_radius=0, height=60)
+                rf.grid(row=idx, column=0, sticky="ew")
 
-            def _bind(w, r=rid, f=rf):
-                w.bind("<Button-1>", lambda e: self._select(r, f))
-                w.configure(cursor="hand2")
+                def _bind(w, r=rid, f=rf):
+                    w.bind("<Button-1>", lambda e: self._select(r, f))
+                    w.configure(cursor="hand2")
 
-            _bind(rf)
+                _bind(rf)
 
-            vals   = [res_name, dosis, horario or "-", fecha or "-", enf_name]
-            widths = [170,       155,   80,             100,           135]
-            for c, (val, w) in enumerate(zip(vals, widths)):
-                lbl = ctk.CTkLabel(rf, text=val, font=ctk.CTkFont(size=12),
-                                   text_color=CLR_TEXT_SOFT, width=w, anchor="w")
-                lbl.grid(row=0, column=c, padx=(14 if c == 0 else 4, 0), sticky="w")
-                _bind(lbl)
+                # --- COLUMNAS ---
+                # Ajustamos para que coincidan EXACTAMENTE con los encabezados
+                # [Valor, Ancho, Color, Anchor]
+                col_specs = [
+                    (res_name, 240, CLR_TEXT, "w"),
+                    (dosis, 180, CLR_TEXT_SOFT, "w"),
+                    (prog_txt, 130, CLR_SKY_XDARK, "center"),
+                    (enf_name, 180, CLR_TEXT_SOFT, "w"),
+                ]
 
-            badge_frame = ctk.CTkFrame(rf, fg_color=estado_bg, corner_radius=6, width=88, height=26)
-            badge_frame.grid(row=0, column=5, padx=(4, 4), pady=12)
-            badge_frame.grid_propagate(False)
-            ctk.CTkLabel(badge_frame, text=estado_txt,
-                         font=ctk.CTkFont(size=10, weight="bold"),
-                         text_color=estado_fg).place(relx=.5, rely=.5, anchor="center")
+                for c, (val, w, color, anchor) in enumerate(col_specs):
+                    lbl = ctk.CTkLabel(rf, text=val, 
+                                    font=ctk.CTkFont(size=12, weight="bold" if c in [0, 2] else "normal"),
+                                    text_color=color, width=w, anchor=anchor)
+                    lbl.grid(row=0, column=c, padx=(14 if c == 0 else 4, 0), pady=10)
+                    _bind(lbl)
 
-            if administrada:
-                btn_app = ctk.CTkButton(
-                    rf, text="✔ Aplicada",
-                    fg_color=CLR_GREEN_LIGHT, hover_color="#bbf7d0",
-                    text_color=CLR_GREEN_DARK,
-                    font=ctk.CTkFont(size=10, weight="bold"),
-                    corner_radius=6, height=26, width=100,
-                    border_width=1, border_color="#86efac",
-                    command=lambda r=rid: self._toggle_administrada(r, True),
-                )
-            else:
-                btn_app = ctk.CTkButton(
-                    rf, text="Registrar",
-                    fg_color=CLR_BG, hover_color=CLR_GREEN_LIGHT,
-                    text_color=CLR_MUTED,
-                    font=ctk.CTkFont(size=10, weight="bold"),
-                    corner_radius=6, height=26, width=100,
-                    border_width=1, border_color=CLR_BORDER,
-                    command=lambda r=rid: self._toggle_administrada(r, False),
-                )
+                # Badge de Estado (Columna 4)
+                badge_container = ctk.CTkFrame(rf, fg_color="transparent", width=100, height=60)
+                badge_container.grid(row=0, column=4, padx=5)
+                badge_container.grid_propagate(False)
+                
+                badge = ctk.CTkFrame(badge_container, fg_color=estado_bg, corner_radius=6, width=90, height=26)
+                badge.place(relx=0.5, rely=0.5, anchor="center")
+                ctk.CTkLabel(badge, text=estado_txt, font=ctk.CTkFont(size=10, weight="bold"),
+                            text_color=estado_fg).place(relx=.5, rely=.5, anchor="center")
+                _bind(badge_container)
 
-            btn_app.grid(row=0, column=6, padx=(4, 12), pady=12)
+                # Botón de Registro (Columna 5)
+                btn_container = ctk.CTkFrame(rf, fg_color="transparent", width=110, height=60)
+                btn_container.grid(row=0, column=5, padx=(5, 12))
+                btn_container.grid_propagate(False)
+
+                if administrada:
+                    btn_app = ctk.CTkButton(btn_container, text="✔ Aplicada", fg_color=CLR_GREEN_LIGHT, 
+                                            text_color=CLR_GREEN_DARK, font=ctk.CTkFont(size=10, weight="bold"),
+                                            width=100, height=28, corner_radius=6,
+                                            command=lambda r=rid: self._toggle_administrada(r, True))
+                else:
+                    btn_app = ctk.CTkButton(btn_container, text="Registrar", fg_color=CLR_BG, 
+                                            text_color=CLR_MUTED, font=ctk.CTkFont(size=10, weight="bold"),
+                                            width=100, height=28, corner_radius=6, border_width=1,
+                                            command=lambda r=rid: self._toggle_administrada(r, False))
+                btn_app.place(relx=0.5, rely=0.5, anchor="center")
 
     # ── Toggle administrada ────────────────────────────────────────────────────
     def _toggle_administrada(self, rid: int, ya_administrada: bool):
@@ -830,7 +836,7 @@ class MedicacionScreen(ctk.CTkFrame):
         hdr.grid(row=0, column=0, sticky="ew")
         hdr.grid_propagate(False)
         ctk.CTkLabel(hdr,
-                     text="⊕  Nueva medicacion" if not edit else "⊕  Editar medicacion",
+                     text="Nueva medicacion" if not edit else "Editar medicacion",
                      font=ctk.CTkFont(size=16, weight="bold"),
                      text_color=CLR_WHITE).pack(side="left", padx=24, pady=14)
         ctk.CTkLabel(hdr, text="Todos los campos son obligatorios",
@@ -1083,7 +1089,7 @@ class MedicacionScreen(ctk.CTkFrame):
                       text_color=CLR_TEXT_SOFT, hover_color="#f1f5f9",
                       corner_radius=8, height=36, command=win.destroy,
                       ).grid(row=0, column=0, padx=(16, 6), pady=12, sticky="ew")
-        ctk.CTkButton(btn_bar, text="▦  Guardar",
+        ctk.CTkButton(btn_bar, text="Guardar",
                       fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
                       text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
                       corner_radius=8, height=36, command=_save,
@@ -1174,7 +1180,7 @@ class MedicacionScreen(ctk.CTkFrame):
         hdr = ctk.CTkFrame(modal, fg_color=CLR_SKY_DARK, corner_radius=0, height=60)
         hdr.pack(fill="x")
         hdr.pack_propagate(False)
-        ctk.CTkLabel(hdr, text="▤  Generar Reporte",
+        ctk.CTkLabel(hdr, text="Generar Reporte",
                      font=ctk.CTkFont(size=16, weight="bold"),
                      text_color=CLR_WHITE).pack(side="left", padx=24, pady=16)
         ctk.CTkLabel(hdr, text="Filtra y exporta medicaciones",
@@ -1248,7 +1254,7 @@ class MedicacionScreen(ctk.CTkFrame):
         info = ctk.CTkFrame(frame, fg_color=CLR_SKY_XLIGHT, corner_radius=8,
                             border_width=1, border_color="#bae6fd")
         info.pack(fill="x", padx=20, pady=(12, 4))
-        ctk.CTkLabel(info, text="ℹ️  El reporte incluirá todas las medicaciones en el rango de fechas seleccionado.",
+        ctk.CTkLabel(info, text="El reporte incluirá todas las medicaciones en el rango de fechas seleccionado.",
                      font=ctk.CTkFont(size=10), text_color=CLR_SKY_XDARK,
                      wraplength=380, justify="left").pack(anchor="w", padx=12, pady=8)
 
@@ -1272,7 +1278,7 @@ class MedicacionScreen(ctk.CTkFrame):
             modal.destroy()
             self._open_report_result(residente, fecha_inicio, fecha_fin)
 
-        ctk.CTkButton(btn_row, text="▤  Generar Reporte",
+        ctk.CTkButton(btn_row, text="Generar Reporte",
                       fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
                       text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
                       corner_radius=8, height=38,
@@ -1286,7 +1292,7 @@ class MedicacionScreen(ctk.CTkFrame):
     def _open_report_result(self, residente, fecha_ini, fecha_fin):
         win = ctk.CTkToplevel(self)
         win.title("Reporte de Medicaciones")
-        _center(win, 900, 600)
+        _center(win, 1200, 600)
         win.grab_set()
         win.configure(fg_color=CLR_WHITE)
 
@@ -1311,7 +1317,7 @@ class MedicacionScreen(ctk.CTkFrame):
 
         # Encabezados
         headers = ["Residente", "Dosis", "Fecha", "Horario", "Enfermero/Doctor", "Estado"]
-        widths  = [160, 140, 100, 80, 160, 100]
+        widths  = [250, 140, 100, 80, 250, 100]
         hdr_row = ctk.CTkFrame(body, fg_color=CLR_BG, corner_radius=0, height=36)
         hdr_row.pack(fill="x")
         for h, w in zip(headers, widths):

@@ -206,7 +206,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
                       corner_radius=10, height=38, command=self._open_form,
                       ).grid(row=0, column=2, padx=(8, 8), pady=14)
 
-        ctk.CTkButton(bar, text="▤ Reportes",
+        ctk.CTkButton(bar, text="Reportes",
                       fg_color="#f59e0b", hover_color="#d97706",
                       text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
                       corner_radius=10, height=38, command=self._open_report_modal,
@@ -367,8 +367,8 @@ class SignosVitalesScreen(ctk.CTkFrame):
         wrap.grid_rowconfigure(1, weight=1)
         wrap.grid_columnconfigure(0, weight=1)
 
-        COLS   = ["Residente",  "Fecha", "F.C.",  "Presión", "Oxig.", "Glucosa",  "Temp.", "Sueño", "Enfermero / Doctor"]
-        WIDTHS = [155,           95,      90,       85,        65,      85,         65,      65,      150]
+        COLS   = ["Residente", "Fecha", "F.C.", "Presión", "Oxig.", "Glucosa", "Temp.", "Sueño", "Personal"]
+        WIDTHS = [230,          90,      60,     80,        60,      75,        60,      40,      190]
         self._COL_WIDTHS = list(zip(COLS, WIDTHS))
 
         hdr = ctk.CTkFrame(wrap, fg_color=CLR_BG, corner_radius=0, height=38)
@@ -434,7 +434,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
         if not rows:
             empty = ctk.CTkFrame(self._list_scroll, fg_color="transparent")
             empty.grid(row=0, column=0, pady=50)
-            ctk.CTkLabel(empty, text="◎", font=ctk.CTkFont(size=32)).pack()
+            ctk.CTkLabel(empty, text="", font=ctk.CTkFont(size=32)).pack()
             ctk.CTkLabel(empty, text="Sin registros de signos vitales",
                          font=ctk.CTkFont(size=14, weight="bold"),
                          text_color=CLR_TEXT_SOFT).pack(pady=(6, 2))
@@ -578,7 +578,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
         hdr.grid(row=0, column=0, sticky="ew")
         hdr.grid_propagate(False)
         ctk.CTkLabel(hdr,
-                     text="◎  Nuevo registro" if not edit else "◎  Editar registro",
+                     text="Nuevo registro" if not edit else "Editar registro",
                      font=ctk.CTkFont(size=16, weight="bold"),
                      text_color=CLR_WHITE).pack(side="left", padx=24, pady=14)
         ctk.CTkLabel(hdr, text="Residente, fecha y enfermero son obligatorios",
@@ -675,7 +675,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
                                     dropdown_fg_color=CLR_WHITE, dropdown_text_color=CLR_TEXT,
                                     height=36, corner_radius=8)
         combo_enf.pack(fill="x")
-        combo_enf.set("Selecciona enfermero o doctor...")
+        combo_enf.set("Selecciona")
         if edit and enf_opts:
             for k, v in enf_opts.items():
                 if v == reg.get("id_enfermero"):
@@ -684,7 +684,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
         grp_fc  = _field("Frecuencia cardiaca (lpm)", 2, 0)
         entry_fc = _entry(grp_fc, "Ej. 72", str(reg.get("frecuencia_cardiaca") or "") if edit else "")
 
-        grp_pre = _field("Presión arterial", 2, 1)
+        grp_pre = _field("Presión arterial (mmHg)", 2, 1)
         entry_pre = _entry(grp_pre, "Ej. 120/80", str(reg.get("presion") or "") if edit else "")
 
         grp_oxi = _field("Oxigenación (%)", 3, 0)
@@ -805,7 +805,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
                       text_color=CLR_TEXT_SOFT, hover_color=CLR_BG,
                       corner_radius=8, height=36, command=win.destroy,
                       ).grid(row=0, column=0, padx=(16, 6), pady=12, sticky="ew")
-        ctk.CTkButton(btn_bar, text="▦  Guardar",
+        ctk.CTkButton(btn_bar, text="Guardar",
                       fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
                       text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
                       corner_radius=8, height=36, command=_save,
@@ -896,7 +896,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
         hdr = ctk.CTkFrame(modal, fg_color=CLR_SKY_DARK, corner_radius=0, height=60)
         hdr.pack(fill="x")
         hdr.pack_propagate(False)
-        ctk.CTkLabel(hdr, text="▤  Generar Reporte",
+        ctk.CTkLabel(hdr, text="Generar Reporte",
                      font=ctk.CTkFont(size=16, weight="bold"),
                      text_color=CLR_WHITE).pack(side="left", padx=24, pady=16)
         ctk.CTkLabel(hdr, text="Filtra y exporta signos vitales",
@@ -956,7 +956,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
                             border_width=1, border_color="#bae6fd")
         info.pack(fill="x", padx=20, pady=(12, 4))
         ctk.CTkLabel(info,
-                     text="ℹ️  Incluirá todos los registros de signos vitales en el rango seleccionado.",
+                     text="Incluirá todos los registros de signos vitales en el rango seleccionado.",
                      font=ctk.CTkFont(size=10), text_color=CLR_SKY_XDARK,
                      wraplength=380, justify="left").pack(anchor="w", padx=12, pady=8)
 
@@ -978,7 +978,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
             modal.destroy()
             self._open_report_result(res, ini, fin)
 
-        ctk.CTkButton(btn_row, text="▤  Generar Reporte",
+        ctk.CTkButton(btn_row, text="Generar Reporte",
                       fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
                       text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
                       corner_radius=8, height=38, command=_generar
@@ -997,7 +997,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
 
         win = ctk.CTkToplevel(self)
         win.title("Reporte de Signos Vitales")
-        _center(win, 980, 620)
+        _center(win, 1200, 620)
         win.grab_set()
         win.configure(fg_color=CLR_WHITE)
 
@@ -1019,7 +1019,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
         body.pack(fill="both", expand=True, padx=20, pady=16)
 
         headers = ["Residente", "Fecha", "F.C.", "Presión", "Oxig.", "Glucosa", "Temp.", "Sueño", "Enfermero"]
-        widths  = [140, 90, 70, 80, 60, 75, 60, 60, 140]
+        widths  = [250, 90, 70, 80, 60, 75, 60, 60, 250]
         hdr_row = ctk.CTkFrame(body, fg_color=CLR_BG, corner_radius=0, height=36)
         hdr_row.pack(fill="x")
         for h, w in zip(headers, widths):
@@ -1053,7 +1053,7 @@ class SignosVitalesScreen(ctk.CTkFrame):
 
         btn_bar = ctk.CTkFrame(win, fg_color=CLR_WHITE, height=60)
         btn_bar.pack(fill="x")
-        ctk.CTkButton(btn_bar, text="⎙  Imprimir PDF",
+        ctk.CTkButton(btn_bar, text="Imprimir PDF",
                       fg_color=CLR_GREEN_DARK, hover_color=CLR_GREEN,
                       text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
                       corner_radius=10, height=38,
@@ -1065,31 +1065,45 @@ class SignosVitalesScreen(ctk.CTkFrame):
                       corner_radius=10, height=38, command=win.destroy
                       ).pack(side="right", padx=10, pady=10)
 
-    # ── Exportar PDF ───────────────────────────────────────────────────────────
+    # ── Exportar PDF — A4 vertical (igual que Medicaciones) ───────────────────
     def _export_pdf(self, rows, residente, fecha_ini, fecha_fin, parent_win=None):
         from tkinter import filedialog
         from datetime import datetime
+
+        # 1. Verificar/instalar reportlab
         try:
-            import reportlab
+            from reportlab.lib.pagesizes import A4
         except ImportError:
             import subprocess, sys
             self._toast("Instalando reportlab, espera...")
             self.update()
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "reportlab", "--quiet"])
-        try:
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")],
-                title="Guardar reporte como...")
-            if not file_path:
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install",
+                                       "reportlab", "--quiet"])
+            except Exception as install_err:
+                self._toast(f"No se pudo instalar reportlab: {install_err}", error=True)
                 return
 
-            from reportlab.lib.pagesizes import A4, landscape
+        # 2. Pedir ruta de guardado
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")],
+            title="Guardar reporte como...",
+        )
+        if not file_path:
+            return
+
+        # 3. Generar PDF
+        try:
+            from reportlab.lib.pagesizes import A4
             from reportlab.lib import colors
             from reportlab.lib.styles import ParagraphStyle
             from reportlab.lib.units import cm
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
-            from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+            from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                            Table, TableStyle, HRFlowable)
+            from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 
+            # ── Colores corporativos (mismos que Medicaciones) ────────────────
             C_BLUE_DARK = colors.HexColor("#0284c7")
             C_BLUE      = colors.HexColor("#0ea5e9")
             C_BLUE_LITE = colors.HexColor("#e0f2fe")
@@ -1099,121 +1113,230 @@ class SignosVitalesScreen(ctk.CTkFrame):
             C_WHITE     = colors.white
 
             def safe(v):
-                return str(v).strip() if v is not None else "-"
+                return str(v).strip() if v not in (None, "", "-") else "-"
 
-            doc = SimpleDocTemplate(file_path, pagesize=landscape(A4),
-                leftMargin=1.5*cm, rightMargin=1.5*cm,
-                topMargin=1.5*cm, bottomMargin=2*cm,
-                title="Reporte de Signos Vitales")
-            page_w = landscape(A4)[0] - 3*cm
+            # ── Documento A4 vertical ─────────────────────────────────────────
+            LEFT_MAR  = 1.8 * cm
+            RIGHT_MAR = 1.8 * cm
+            TOP_MAR   = 1.5 * cm
+            BOT_MAR   = 2.0 * cm
 
-            st_title = ParagraphStyle("t",  fontName="Helvetica-Bold", fontSize=18, textColor=C_BLUE_DARK)
-            st_sub   = ParagraphStyle("s",  fontName="Helvetica", fontSize=10, textColor=C_GRAY, spaceAfter=4)
-            st_foot  = ParagraphStyle("f",  fontName="Helvetica-Oblique", fontSize=8, textColor=C_GRAY, alignment=TA_CENTER)
-            st_lbl   = ParagraphStyle("lb", fontName="Helvetica-Bold", fontSize=9, textColor=C_BLUE_DARK, leading=14)
-            st_val   = ParagraphStyle("vl", fontName="Helvetica", fontSize=9, textColor=C_DARK, leading=14)
-            st_cell  = ParagraphStyle("cl", fontName="Helvetica", fontSize=8, textColor=C_DARK, leading=11, wordWrap="CJK")
-            st_head  = ParagraphStyle("th", fontName="Helvetica-Bold", fontSize=7, textColor=C_WHITE, alignment=TA_CENTER, leading=9)
-            st_cnt   = ParagraphStyle("cn", fontName="Helvetica", fontSize=8, textColor=C_DARK, alignment=TA_CENTER)
-            st_num   = ParagraphStyle("nm", fontName="Helvetica", fontSize=8, textColor=C_GRAY, alignment=TA_CENTER)
+            doc = SimpleDocTemplate(
+                file_path,
+                pagesize=A4,
+                leftMargin=LEFT_MAR, rightMargin=RIGHT_MAR,
+                topMargin=TOP_MAR,   bottomMargin=BOT_MAR,
+                title="Reporte de Signos Vitales",
+                author="Sistema de Gestión de Asilo - CREAN",
+            )
+            page_w = A4[0] - LEFT_MAR - RIGHT_MAR   # ≈ 17.4 cm
+
+            # ── Estilos ───────────────────────────────────────────────────────
+            st_title = ParagraphStyle("t",  fontName="Helvetica-Bold", fontSize=20,
+                                      textColor=C_BLUE_DARK, spaceAfter=2, alignment=TA_LEFT)
+            st_sub   = ParagraphStyle("s",  fontName="Helvetica",      fontSize=10,
+                                      textColor=C_GRAY, spaceAfter=8)
+            st_foot  = ParagraphStyle("f",  fontName="Helvetica-Oblique", fontSize=8,
+                                      textColor=C_GRAY, alignment=TA_CENTER)
+            st_lbl   = ParagraphStyle("lb", fontName="Helvetica-Bold", fontSize=9,
+                                      textColor=C_BLUE_DARK, leading=14)
+            st_val   = ParagraphStyle("vl", fontName="Helvetica",      fontSize=9,
+                                      textColor=C_DARK, leading=14)
+            st_cell  = ParagraphStyle("cl", fontName="Helvetica",      fontSize=8,
+                                      textColor=C_DARK, leading=11, wordWrap="CJK")
+            st_head  = ParagraphStyle("th", fontName="Helvetica-Bold", fontSize=7,
+                                      textColor=C_WHITE, alignment=TA_CENTER, leading=9)
+            st_cnt   = ParagraphStyle("cn", fontName="Helvetica",      fontSize=8,
+                                      textColor=C_DARK, alignment=TA_CENTER)
+            st_num   = ParagraphStyle("nm", fontName="Helvetica",      fontSize=8,
+                                      textColor=C_GRAY, alignment=TA_CENTER)
 
             story = []
 
-            # Header banner
+            # ── Encabezado ────────────────────────────────────────────────────
             hdr_tbl = Table([[
-                Paragraph("Sistema de Gestión de Asilo - CREAN", ParagraphStyle("hd", fontName="Helvetica-Bold", fontSize=13, textColor=C_WHITE)),
+                Paragraph("Sistema de Gestión de Asilo - CREAN",
+                          ParagraphStyle("hd", fontName="Helvetica-Bold",
+                                         fontSize=13, textColor=C_WHITE)),
                 Paragraph(f"Generado: {datetime.now().strftime('%d/%m/%Y  %H:%M')}",
                           ParagraphStyle("hd2", fontName="Helvetica", fontSize=9,
-                                         textColor=colors.HexColor("#bae6fd"), alignment=TA_RIGHT))
-            ]], colWidths=[page_w*0.6, page_w*0.4])
+                                         textColor=colors.HexColor("#bae6fd"),
+                                         alignment=TA_RIGHT)),
+            ]], colWidths=[page_w * 0.6, page_w * 0.4])
             hdr_tbl.setStyle(TableStyle([
-                ("BACKGROUND",(0,0),(-1,-1),C_BLUE_DARK),("VALIGN",(0,0),(-1,-1),"MIDDLE"),
-                ("LEFTPADDING",(0,0),(-1,-1),16),("RIGHTPADDING",(0,0),(-1,-1),16),
-                ("TOPPADDING",(0,0),(-1,-1),12),("BOTTOMPADDING",(0,0),(-1,-1),12),
+                ("BACKGROUND",    (0, 0), (-1, -1), C_BLUE_DARK),
+                ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 16),
+                ("RIGHTPADDING",  (0, 0), (-1, -1), 16),
+                ("TOPPADDING",    (0, 0), (-1, -1), 12),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
             ]))
-            story += [hdr_tbl, Spacer(1,14)]
-            story += [Paragraph("Reporte de Signos Vitales", st_title), Spacer(1,10),
-                      Paragraph("Registro y seguimiento de constantes vitales por residente", st_sub)]
-            story.append(HRFlowable(width="100%", thickness=1.5, color=C_BLUE, spaceBefore=2, spaceAfter=10))
+            story += [hdr_tbl, Spacer(1, 14)]
 
-            # Criterios
-            res_txt = safe(residente) if residente and residente != "Todos" else "Todos los residentes"
+            story.append(Paragraph("Reporte de Signos Vitales", st_title))
+            story.append(Spacer(1, 10))
+            story.append(Paragraph("Registro y seguimiento de constantes vitales por residente", st_sub))
+            story.append(HRFlowable(width="100%", thickness=1.5, color=C_BLUE,
+                                    spaceBefore=6, spaceAfter=10))
+
+            # ── Criterios ─────────────────────────────────────────────────────
+            res_txt = (safe(residente) if residente and residente != "Todos"
+                       else "Todos los residentes")
+
             crit_inner = Table([[
-                Paragraph("Residente:", st_lbl), Paragraph(res_txt, st_val),
-                Paragraph("Período:", st_lbl), Paragraph(f"{safe(fecha_ini)}  →  {safe(fecha_fin)}", st_val),
+                Paragraph("Residente:",       st_lbl), Paragraph(res_txt, st_val),
+                Paragraph("Período:",         st_lbl),
+                Paragraph(f"{safe(fecha_ini)}  →  {safe(fecha_fin)}", st_val),
                 Paragraph("Total registros:", st_lbl), Paragraph(str(len(rows)), st_val),
-            ]], colWidths=[page_w*0.12, page_w*0.22, page_w*0.09, page_w*0.30, page_w*0.13, page_w*0.14])
-            crit_inner.setStyle(TableStyle([("VALIGN",(0,0),(-1,-1),"MIDDLE"),
-                ("TOPPADDING",(0,0),(-1,-1),6),("BOTTOMPADDING",(0,0),(-1,-1),6),
-                ("LEFTPADDING",(0,0),(-1,-1),4),("RIGHTPADDING",(0,0),(-1,-1),4)]))
+            ]], colWidths=[page_w*0.13, page_w*0.24, page_w*0.10,
+                           page_w*0.29, page_w*0.14, page_w*0.10])
+            crit_inner.setStyle(TableStyle([
+                ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING",    (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+            ]))
             crit_tbl = Table([
-                [Paragraph("Criterios del reporte", ParagraphStyle("cr", fontName="Helvetica-Bold", fontSize=10, textColor=C_BLUE_DARK))],
-                [crit_inner]], colWidths=[page_w])
+                [Paragraph("Criterios del reporte",
+                           ParagraphStyle("cr", fontName="Helvetica-Bold",
+                                          fontSize=10, textColor=C_BLUE_DARK))],
+                [crit_inner],
+            ], colWidths=[page_w])
             crit_tbl.setStyle(TableStyle([
-                ("BACKGROUND",(0,0),(-1,-1),C_BLUE_LITE),("BOX",(0,0),(-1,-1),1,colors.HexColor("#7dd3fc")),
-                ("LEFTPADDING",(0,0),(-1,-1),12),("RIGHTPADDING",(0,0),(-1,-1),12),
-                ("TOPPADDING",(0,0),(0,0),10),("BOTTOMPADDING",(0,0),(0,0),2),
-                ("TOPPADDING",(0,1),(-1,-1),4),("BOTTOMPADDING",(0,1),(-1,-1),10)]))
-            story += [crit_tbl, Spacer(1,14)]
+                ("BACKGROUND",    (0, 0), (-1, -1), C_BLUE_LITE),
+                ("BOX",           (0, 0), (-1, -1), 1, colors.HexColor("#7dd3fc")),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 12),
+                ("RIGHTPADDING",  (0, 0), (-1, -1), 12),
+                ("TOPPADDING",    (0, 0), (0,  0),  10),
+                ("BOTTOMPADDING", (0, 0), (0,  0),  2),
+                ("TOPPADDING",    (0, 1), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 10),
+            ]))
+            story += [crit_tbl, Spacer(1, 14)]
 
-            # Tabla
-            col_heads = ["#","Residente","Fecha","F.C.\n(lpm)","Presión\n(mmHg)",
-                         "Oxig.\n(%)","Glucosa\n(mg/dL)","Temp.\n(°C)","Sueño\n(h)",
-                         "Pañales","Orinó","Evacuó","Enfermero / Doctor","Observaciones"]
-            col_w = [0.6*cm,3.2*cm,2*cm,1.5*cm,1.8*cm,1.4*cm,1.8*cm,1.4*cm,1.3*cm,1.3*cm,1.1*cm,1.3*cm,3*cm,3.5*cm]
+            # ── Tabla principal — anchos ajustados a A4 (≈17.4 cm) ───────────
+            col_heads = [
+                "#", "Residente", "Fecha", "F.C.\n(lpm)", "Presión\n(mmHg)",
+                "Oxig.\n(%)", "Glucosa\n(mg/dL)", "Temp.\n(°C)", "Sueño\n(h)",
+                "Pañales", "Orinó", "Evacuó", "Enfermero / Doctor",
+            ]
+            col_w = [x * cm for x in [
+                0.50,   # #
+                2.80,   # Residente
+                1.80,   # Fecha
+                1.00,   # F.C.
+                1.30,   # Presión
+                1.00,   # Oxig.
+                1.40,   # Glucosa
+                1.10,   # Temp.
+                1.10,   # Sueño
+                1.30,   # Pañales
+                1.00,   # Orinó
+                1.20,   # Evacuó
+                2.40,   # Enfermero
+            ]]  # suma = 17.40 cm = page_w  ✔
+
             table_data = [[Paragraph(h, st_head) for h in col_heads]]
+
             for idx, row in enumerate(rows, 1):
                 if isinstance(row, dict):
-                    rn=safe(row.get("residente_nombre")); fe=safe(row.get("fecha"))
-                    fc=safe(row.get("frecuencia_cardiaca")); pr=safe(row.get("presion"))
-                    ox=safe(row.get("oxigenacion")); gl=safe(row.get("glucosa"))
-                    te=safe(row.get("temperatura")); su=safe(row.get("sueno"))
-                    pa=safe(row.get("panales_usados")); en=safe(row.get("enfermero_nombre"))
-                    ob=safe(row.get("observaciones"))
-                    ori="✔" if row.get("orino") else "—"; eva="✔" if row.get("evacuo") else "—"
+                    rn  = safe(row.get("residente_nombre"))
+                    fe  = safe(row.get("fecha"))
+                    fc  = safe(row.get("frecuencia_cardiaca"))
+                    pr  = safe(row.get("presion"))
+                    ox  = safe(row.get("oxigenacion"))
+                    gl  = safe(row.get("glucosa"))
+                    te  = safe(row.get("temperatura"))
+                    su  = safe(row.get("sueno"))
+                    pa  = safe(row.get("panales_usados"))
+                    en  = safe(row.get("enfermero_nombre"))
+                    ori = "✔" if row.get("orino")  else "—"
+                    eva = "✔" if row.get("evacuo") else "—"
                 else:
-                    rn=safe(row[3]); fe=safe(row[1]); fc=safe(row[4]); pr=safe(row[5])
-                    ox=safe(row[6]); gl=safe(row[7]); te=safe(row[8]); su=safe(row[9])
-                    pa=safe(row[10] if len(row)>10 else None); en=safe(row[14] if len(row)>14 else None)
-                    ob=safe(row[13] if len(row)>13 else None)
-                    ori="✔" if (len(row)>11 and row[11]) else "—"; eva="✔" if (len(row)>12 and row[12]) else "—"
-                table_data.append([
-                    Paragraph(str(idx),st_num), Paragraph(rn,st_cell), Paragraph(fe,st_cnt),
-                    Paragraph(fc,st_cnt), Paragraph(pr,st_cnt), Paragraph(ox,st_cnt),
-                    Paragraph(gl,st_cnt), Paragraph(te,st_cnt), Paragraph(su,st_cnt),
-                    Paragraph(pa,st_cnt), Paragraph(ori,st_cnt), Paragraph(eva,st_cnt),
-                    Paragraph(en,st_cell), Paragraph(ob,st_cell)])
-            tbl = Table(table_data, colWidths=col_w, repeatRows=1)
-            ts = [("BACKGROUND",(0,0),(-1,0),C_BLUE_DARK),("ALIGN",(0,0),(-1,0),"CENTER"),
-                  ("TOPPADDING",(0,0),(-1,0),7),("BOTTOMPADDING",(0,0),(-1,0),7),
-                  ("VALIGN",(0,1),(-1,-1),"MIDDLE"),("TOPPADDING",(0,1),(-1,-1),5),
-                  ("BOTTOMPADDING",(0,1),(-1,-1),5),("LEFTPADDING",(0,0),(-1,-1),4),
-                  ("RIGHTPADDING",(0,0),(-1,-1),4),("GRID",(0,0),(-1,-1),0.4,colors.HexColor("#e2e8f0")),
-                  ("LINEBELOW",(0,0),(-1,0),1.5,C_BLUE)]
-            for i in range(1, len(table_data)):
-                ts.append(("BACKGROUND",(0,i),(-1,i), C_WHITE if i%2==0 else C_GRAY_L))
-            tbl.setStyle(TableStyle(ts))
-            story += [tbl, Spacer(1,16)]
+                    rn  = safe(row[3]);  fe = safe(row[1]);  fc = safe(row[4])
+                    pr  = safe(row[5]);  ox = safe(row[6]);  gl = safe(row[7])
+                    te  = safe(row[8]);  su = safe(row[9])
+                    pa  = safe(row[10] if len(row) > 10 else None)
+                    en  = safe(row[14] if len(row) > 14 else None)
+                    ori = "✔" if (len(row) > 11 and row[11]) else "—"
+                    eva = "✔" if (len(row) > 12 and row[12]) else "—"
 
-            # Resumen
-            n_res  = len({(r.get("residente_nombre") if isinstance(r,dict) else r[3]) for r in rows})
-            n_dias = len({(r.get("fecha") if isinstance(r,dict) else r[1]) for r in rows})
+                table_data.append([
+                    Paragraph(str(idx), st_num),
+                    Paragraph(rn, st_cell), Paragraph(fe, st_cnt),
+                    Paragraph(fc, st_cnt),  Paragraph(pr, st_cnt),
+                    Paragraph(ox, st_cnt),  Paragraph(gl, st_cnt),
+                    Paragraph(te, st_cnt),  Paragraph(su, st_cnt),
+                    Paragraph(pa, st_cnt),  Paragraph(ori, st_cnt),
+                    Paragraph(eva, st_cnt), Paragraph(en, st_cell),
+                ])
+
+            tbl = Table(table_data, colWidths=col_w, repeatRows=1)
+            ts = [
+                ("BACKGROUND",    (0, 0), (-1,  0), C_BLUE_DARK),
+                ("ALIGN",         (0, 0), (-1,  0), "CENTER"),
+                ("TOPPADDING",    (0, 0), (-1,  0), 7),
+                ("BOTTOMPADDING", (0, 0), (-1,  0), 7),
+                ("VALIGN",        (0, 1), (-1, -1), "MIDDLE"),
+                ("TOPPADDING",    (0, 1), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 5),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
+                ("GRID",          (0, 0), (-1, -1), 0.4, colors.HexColor("#e2e8f0")),
+                ("LINEBELOW",     (0, 0), (-1,  0), 1.5, C_BLUE),
+            ]
+            for i in range(1, len(table_data)):
+                ts.append(("BACKGROUND", (0, i), (-1, i),
+                            C_WHITE if i % 2 == 0 else C_GRAY_L))
+            tbl.setStyle(TableStyle(ts))
+            story += [tbl, Spacer(1, 16)]
+
+            # ── Resumen estadístico ───────────────────────────────────────────
+            n_res  = len({(r.get("residente_nombre") if isinstance(r, dict) else r[3])
+                          for r in rows})
+            n_dias = len({(r.get("fecha")            if isinstance(r, dict) else r[1])
+                          for r in rows})
+
             stats_tbl = Table([[
-                Paragraph(f"<font color='#0ea5e9' size=16><b>{len(rows)}</b></font><br/><font color='#64748b' size=8>Total registros</font>", ParagraphStyle("s1",alignment=TA_CENTER,leading=20)),
-                Paragraph(f"<font color='#16a34a' size=16><b>{n_res}</b></font><br/><font color='#64748b' size=8>Residentes</font>", ParagraphStyle("s2",alignment=TA_CENTER,leading=20)),
-                Paragraph(f"<font color='#0284c7' size=16><b>{n_dias}</b></font><br/><font color='#64748b' size=8>Días con registro</font>", ParagraphStyle("s3",alignment=TA_CENTER,leading=20)),
-            ]], colWidths=[page_w/3]*3)
+                Paragraph(
+                    f"<font color='#0ea5e9' size=18><b>{len(rows)}</b></font><br/>"
+                    f"<font color='#64748b' size=8>Total registros</font>",
+                    ParagraphStyle("s1", alignment=TA_CENTER, leading=20)),
+                Paragraph(
+                    f"<font color='#16a34a' size=18><b>{n_res}</b></font><br/>"
+                    f"<font color='#64748b' size=8>Residentes</font>",
+                    ParagraphStyle("s2", alignment=TA_CENTER, leading=20)),
+                Paragraph(
+                    f"<font color='#0284c7' size=18><b>{n_dias}</b></font><br/>"
+                    f"<font color='#64748b' size=8>Días con registro</font>",
+                    ParagraphStyle("s3", alignment=TA_CENTER, leading=20)),
+            ]], colWidths=[page_w / 3] * 3)
             stats_tbl.setStyle(TableStyle([
-                ("BACKGROUND",(0,0),(-1,-1),C_BLUE_LITE),("BOX",(0,0),(-1,-1),1,colors.HexColor("#7dd3fc")),
-                ("INNERGRID",(0,0),(-1,-1),0.5,colors.HexColor("#bae6fd")),
-                ("VALIGN",(0,0),(-1,-1),"MIDDLE"),("TOPPADDING",(0,0),(-1,-1),10),("BOTTOMPADDING",(0,0),(-1,-1),10)]))
-            story += [stats_tbl, Spacer(1,18)]
-            story.append(HRFlowable(width="100%", thickness=0.8, color=C_BLUE, spaceAfter=6))
-            story.append(Paragraph("Reporte generado automáticamente por el Sistema de Gestión de Asilo - CREAN.  Documento confidencial — Uso interno exclusivo.", st_foot))
+                ("BACKGROUND",    (0, 0), (-1, -1), C_BLUE_LITE),
+                ("BOX",           (0, 0), (-1, -1), 1, colors.HexColor("#7dd3fc")),
+                ("INNERGRID",     (0, 0), (-1, -1), 0.5, colors.HexColor("#bae6fd")),
+                ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING",    (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                ("ROUNDEDCORNERS", [6, 6, 6, 6]),
+            ]))
+            story += [stats_tbl, Spacer(1, 18)]
+
+            # ── Pie de página ─────────────────────────────────────────────────
+            story.append(HRFlowable(width="100%", thickness=0.8, color=C_BLUE,
+                                    spaceBefore=4, spaceAfter=6))
+            story.append(Paragraph(
+                "Reporte generado automáticamente por el Sistema de Gestión de Asilo - CREAN.  "
+                "Documento confidencial — Uso interno exclusivo.",
+                st_foot))
 
             doc.build(story)
-            self._toast(f"PDF guardado: {file_path}")
+            self._toast("PDF guardado correctamente")
             if parent_win:
                 parent_win.after(300, parent_win.destroy)
+
         except Exception as ex:
+            import traceback
+            traceback.print_exc()
             self._toast(f"Error al generar PDF: {ex}", error=True)
