@@ -705,10 +705,6 @@ class ResidentesScreen(ctk.CTkFrame):
                     if not img_paths.get(key, ctk.StringVar()).get().strip():
                         return False, f"'{label}' es obligatorio"
                 return True, ""
-            elif i == 1:
-                if not hab_var.get():
-                    return False, "Debes seleccionar una habitación"
-                return True, ""
             elif i == 2:
                 if not entries.get("fam_nombre") or not entries["fam_nombre"].get().strip():
                     return False, "El nombre del familiar es obligatorio"
