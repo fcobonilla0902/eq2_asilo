@@ -34,27 +34,48 @@ def _center(win, w, h):
     win.geometry(f"{w}x{h}+{(sw-w)//2}+{(sh-h)//2}")
 
 
-def _estado_actividad(es_fija: str, fecha_programada: str, hora_programada: str):
+def _estado_actividad(es_fija: str, fecha_programada: str, hora_programada: str, total_registros: int = 0):
     es_fija_txt = str(es_fija or "").strip().lower()
 
     if es_fija_txt in ("sí", "si", "1", "true", "fija"):
         return "Fija", CLR_GREEN_LIGHT, CLR_GREEN_DARK
 
-    today = date.today()
-    now = datetime.now().strftime("%H:%M")
-
     try:
         f = date.fromisoformat(str(fecha_programada))
     except Exception:
-        return "Programada", CLR_SKY_LIGHT, CLR_SKY_XDARK
+        return "Pendiente", CLR_SKY_LIGHT, CLR_SKY_XDARK
 
-    hora = str(hora_programada or "")
+    hora = str(hora_programada or "").strip()
 
-    if f < today:
-        return "Vencida", CLR_RED_LIGHT, CLR_RED
-    if f == today and hora and hora <= now:
-        return "Hoy", CLR_AMBER_LIGHT, CLR_AMBER
-    return "Programada", CLR_SKY_LIGHT, CLR_SKY_XDARK
+    # Construir datetime límite = hora programada + 2 horas
+    try:
+        h, m = int(hora[:2]), int(hora[3:5])
+        h_limite = h + 2
+        if h_limite >= 24:
+            # El límite cae al día siguiente
+            from datetime import timedelta
+            dt_limite = datetime(f.year, f.month, f.day, h, m) + timedelta(hours=2)
+        else:
+            dt_limite = datetime(f.year, f.month, f.day, h_limite, m)
+        tiene_hora = True
+    except Exception:
+        tiene_hora = False
+
+    now_dt = datetime.now()
+
+    if tiene_hora:
+        vencida = now_dt > dt_limite
+    else:
+        # Sin hora: se vence al final del día
+        vencida = now_dt.date() > f
+
+    if vencida:
+        if total_registros > 0:
+            return "Hecho", CLR_GREEN_LIGHT, CLR_GREEN_DARK
+        else:
+            return "Atrasado", CLR_RED_LIGHT, CLR_RED
+    else:
+        return "Pendiente", CLR_SKY_LIGHT, CLR_SKY_XDARK
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -207,10 +228,6 @@ class CalendarPicker(ctk.CTkToplevel):
 # Helper: campo de fecha con botón de calendario
 # ─────────────────────────────────────────────────────────────────────────────
 def _make_date_field(parent, initial_value: str):
-    """
-    Retorna (frame, var) donde var es un StringVar con la fecha seleccionada.
-    Al hacer clic en el campo o el ícono, abre el CalendarPicker.
-    """
     var = ctk.StringVar(value=initial_value)
 
     frame = ctk.CTkFrame(
@@ -249,13 +266,9 @@ def _make_date_field(parent, initial_value: str):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Helper: selector de hora con spinners ▲/▼ (igual que Medicaciones)
+# Helper: selector de hora con spinners ▲/▼
 # ─────────────────────────────────────────────────────────────────────────────
 def _make_time_field(parent, initial_value: str):
-    """
-    Retorna (frame, get_hora) donde get_hora() devuelve la hora como 'HH:MM'.
-    Usa spinners ▲/▼ idénticos al formulario de Medicaciones.
-    """
     try:
         parts = initial_value.strip().split(":")
         _h0 = int(parts[0]) % 24
@@ -272,7 +285,6 @@ def _make_time_field(parent, initial_value: str):
     picker_row.pack(pady=10, padx=16, anchor="w")
 
     def _spin_col(parent_frame, init_val, max_val):
-        """Columna con ▲ display ▼. Devuelve lista mutable [val]."""
         _val = [init_val]
 
         col = ctk.CTkFrame(parent_frame, fg_color="transparent")
@@ -325,10 +337,9 @@ def _make_time_field(parent, initial_value: str):
 
     _hora_h = _spin_col(picker_row, _h0, 23)
 
-    # Separador ":"
     sep_col = ctk.CTkFrame(picker_row, fg_color="transparent")
     sep_col.pack(side="left", padx=6)
-    ctk.CTkFrame(sep_col, fg_color="transparent", height=22).pack()  # spacer
+    ctk.CTkFrame(sep_col, fg_color="transparent", height=22).pack()
     ctk.CTkLabel(
         sep_col, text=":",
         font=ctk.CTkFont(size=26, weight="bold"),
@@ -337,7 +348,6 @@ def _make_time_field(parent, initial_value: str):
 
     _hora_m = _spin_col(picker_row, _m0, 59)
 
-    # Etiquetas hh / mm al lado
     hint_col = ctk.CTkFrame(picker_row, fg_color="transparent")
     hint_col.pack(side="left", padx=(14, 0))
     ctk.CTkFrame(hint_col, fg_color="transparent", height=22).pack()
@@ -597,7 +607,10 @@ class ActividadesScreen(ctk.CTkFrame):
             total_registros = int(row.get("total_registros") or 0)
 
             tipo_txt = "Fija" if str(es_fija).strip().lower() in ("sí", "si", "1", "true", "fija") else "Opcional"
-            estado_txt, estado_bg, estado_fg = _estado_actividad(es_fija, fecha, hora)
+            # ── Pasa total_registros para calcular el estado correcto ──
+            estado_txt, estado_bg, estado_fg = _estado_actividad(
+                es_fija, fecha, hora, total_registros
+            )
 
             bg = CLR_WHITE if idx % 2 == 0 else CLR_ROW_ALT
             rf = ctk.CTkFrame(self._table, fg_color=bg, corner_radius=0, height=52)
@@ -661,7 +674,6 @@ class ActividadesScreen(ctk.CTkFrame):
         self._btn_del.configure(state=s)
 
     # ── Formulario actividad ──────────────────────────────────────────────────
-# ── Formulario actividad (Versión Compacta Sin Scroll) ────────────────────────
     def _open_form(self, datos_edicion=None):
         edit = datos_edicion is not None
 
@@ -670,16 +682,12 @@ class ActividadesScreen(ctk.CTkFrame):
         win.grab_set()
         win.configure(fg_color=CLR_WHITE)
         win.resizable(False, False)
-        
-        # Ajustamos la altura a una medida donde quepa todo (560 es suficiente si compactamos)
         _center(win, 440, 560)
 
-        # Encabezado más apretado
         ctk.CTkLabel(
             win, text="Nueva actividad" if not edit else "Editar actividad",
             font=ctk.CTkFont(size=16, weight="bold"), text_color=CLR_TEXT
         ).pack(pady=(15, 0))
-        
         ctk.CTkLabel(
             win, text="Completa los datos de la actividad",
             font=ctk.CTkFont(size=11), text_color=CLR_MUTED
@@ -688,7 +696,6 @@ class ActividadesScreen(ctk.CTkFrame):
         form = ctk.CTkFrame(win, fg_color="transparent")
         form.pack(fill="both", expand=True, padx=30)
 
-        # ── Nombre ──
         ctk.CTkLabel(form, text="Nombre de la actividad", font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_TEXT_SOFT).pack(anchor="w")
         entry_nombre = ctk.CTkEntry(form, height=35, corner_radius=8, border_color=CLR_BORDER)
@@ -696,49 +703,42 @@ class ActividadesScreen(ctk.CTkFrame):
         if edit and datos_edicion.get("nombre"):
             entry_nombre.insert(0, str(datos_edicion["nombre"]))
 
-        # ── Tipo y Fecha en la misma fila para ahorrar espacio vertical ──
         row_mid = ctk.CTkFrame(form, fg_color="transparent")
         row_mid.pack(fill="x", pady=(0, 8))
         row_mid.grid_columnconfigure((0, 1), weight=1)
 
-        # Columna Tipo
         col_tipo = ctk.CTkFrame(row_mid, fg_color="transparent")
         col_tipo.grid(row=0, column=0, sticky="ew", padx=(0, 5))
         ctk.CTkLabel(col_tipo, text="Tipo", font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_TEXT_SOFT).pack(anchor="w")
-        
+
         es_fija_val = str(datos_edicion.get("es_fija", "")).strip().lower() if edit else ""
         tipo_inicial = "Fija" if es_fija_val in ("sí", "si", "1", "true", "fija") else "Opcional"
-        
+
         tipo_var = ctk.StringVar(value=tipo_inicial)
-        ctk.CTkOptionMenu(col_tipo, values=["Fija", "Opcional"], variable=tipo_var, 
+        ctk.CTkOptionMenu(col_tipo, values=["Fija", "Opcional"], variable=tipo_var,
                           height=35, corner_radius=8).pack(fill="x", pady=(2, 0))
 
-        # Columna Fecha
         col_fecha = ctk.CTkFrame(row_mid, fg_color="transparent")
         col_fecha.grid(row=0, column=1, sticky="ew", padx=(5, 0))
         ctk.CTkLabel(col_fecha, text="Fecha", font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_TEXT_SOFT).pack(anchor="w")
-        
+
         fecha_inicial = str(datos_edicion.get("fecha_programada", date.today().isoformat())) if edit else date.today().isoformat()
         fecha_frame, fecha_var = _make_date_field(col_fecha, fecha_inicial)
-        fecha_frame.configure(height=35) # Forzamos altura menor
+        fecha_frame.configure(height=35)
         fecha_frame.pack(fill="x", pady=(2, 0))
 
-        # ── Hora (Selector compactado) ──
         ctk.CTkLabel(form, text="Horario", font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_TEXT_SOFT).pack(anchor="w")
-        
+
         hora_inicial = str(datos_edicion.get("hora_programada", "09:00")) if edit else "09:00"
         hora_frame, get_hora = _make_time_field(form, hora_inicial)
-        # Reducimos el padding interno del frame de la hora
         hora_frame.pack(fill="x", pady=(2, 5))
 
-        # Ajuste de mensaje de error
         lbl_msg = ctk.CTkLabel(win, text="", font=ctk.CTkFont(size=11), text_color=CLR_RED)
         lbl_msg.pack(pady=(0, 5))
 
-        # ── Barra de botones ──
         btn_bar = ctk.CTkFrame(win, fg_color="transparent")
         btn_bar.pack(fill="x", pady=(0, 20), padx=30)
         btn_bar.grid_columnconfigure((0, 1), weight=1)
@@ -761,18 +761,18 @@ class ActividadesScreen(ctk.CTkFrame):
                     actualizar_actividad(datos_edicion["id_actividad"], datos)
                 else:
                     crear_actividad(datos)
-                
+
                 self._toast("Éxito al guardar")
                 win.destroy()
                 self._load_data()
             except Exception as ex:
                 lbl_msg.configure(text=f"▲ {ex}")
 
-        ctk.CTkButton(btn_bar, text="Cancelar", fg_color=CLR_WHITE, border_width=1, 
+        ctk.CTkButton(btn_bar, text="Cancelar", fg_color=CLR_WHITE, border_width=1,
                       border_color=CLR_BORDER, text_color=CLR_TEXT_SOFT, height=40,
                       command=win.destroy).grid(row=0, column=0, padx=(0, 5), sticky="ew")
 
-        ctk.CTkButton(btn_bar, text="Guardar", fg_color=CLR_SKY_DARK, text_color=CLR_WHITE, 
+        ctk.CTkButton(btn_bar, text="Guardar", fg_color=CLR_SKY_DARK, text_color=CLR_WHITE,
                       font=ctk.CTkFont(weight="bold"), height=40,
                       command=_guardar).grid(row=0, column=1, padx=(5, 0), sticky="ew")
 
