@@ -1,6 +1,6 @@
 """
 Pantalla de Actividades — CustomTkinter
-CRUD de actividades fijas y programadas + registro de participación.
+CRUD de actividades fijas y programadas.
 """
 
 import customtkinter as ctk
@@ -34,11 +34,17 @@ def _center(win, w, h):
     win.geometry(f"{w}x{h}+{(sw-w)//2}+{(sh-h)//2}")
 
 
-def _estado_actividad(es_fija: str, fecha_programada: str, hora_programada: str, total_registros: int = 0):
+def _estado_actividad(es_fija: str, fecha_programada: str, hora_programada: str, hecho: int = 0):
+    """Devuelve (texto, bg_color, fg_color) según el estado calculado."""
     es_fija_txt = str(es_fija or "").strip().lower()
 
     if es_fija_txt in ("sí", "si", "1", "true", "fija"):
+        if hecho:
+            return "Hecho", CLR_GREEN_LIGHT, CLR_GREEN_DARK
         return "Fija", CLR_GREEN_LIGHT, CLR_GREEN_DARK
+
+    if hecho:
+        return "Hecho", CLR_GREEN_LIGHT, CLR_GREEN_DARK
 
     try:
         f = date.fromisoformat(str(fecha_programada))
@@ -50,13 +56,8 @@ def _estado_actividad(es_fija: str, fecha_programada: str, hora_programada: str,
     # Construir datetime límite = hora programada + 2 horas
     try:
         h, m = int(hora[:2]), int(hora[3:5])
-        h_limite = h + 2
-        if h_limite >= 24:
-            # El límite cae al día siguiente
-            from datetime import timedelta
-            dt_limite = datetime(f.year, f.month, f.day, h, m) + timedelta(hours=2)
-        else:
-            dt_limite = datetime(f.year, f.month, f.day, h_limite, m)
+        from datetime import timedelta
+        dt_limite = datetime(f.year, f.month, f.day, h, m) + timedelta(hours=2)
         tiene_hora = True
     except Exception:
         tiene_hora = False
@@ -66,14 +67,10 @@ def _estado_actividad(es_fija: str, fecha_programada: str, hora_programada: str,
     if tiene_hora:
         vencida = now_dt > dt_limite
     else:
-        # Sin hora: se vence al final del día
         vencida = now_dt.date() > f
 
     if vencida:
-        if total_registros > 0:
-            return "Hecho", CLR_GREEN_LIGHT, CLR_GREEN_DARK
-        else:
-            return "Atrasado", CLR_RED_LIGHT, CLR_RED
+        return "Atrasado", CLR_RED_LIGHT, CLR_RED
     else:
         return "Pendiente", CLR_SKY_LIGHT, CLR_SKY_XDARK
 
@@ -427,13 +424,6 @@ class ActividadesScreen(ctk.CTkFrame):
         btns.grid(row=0, column=2, padx=(8, 28), pady=14)
 
         ctk.CTkButton(
-            btns, text="▤ Participación",
-            fg_color=CLR_SKY_LIGHT, hover_color="#bae6fd",
-            text_color=CLR_SKY_XDARK, font=ctk.CTkFont(size=12, weight="bold"),
-            corner_radius=10, height=38, command=self._open_participacion
-        ).pack(side="left", padx=(0, 8))
-
-        ctk.CTkButton(
             btns, text="+ Nueva actividad",
             fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
             text_color=CLR_WHITE, font=ctk.CTkFont(size=12, weight="bold"),
@@ -448,12 +438,11 @@ class ActividadesScreen(ctk.CTkFrame):
     def _build_stats(self):
         sf = ctk.CTkFrame(self, fg_color="transparent")
         sf.grid(row=1, column=0, sticky="ew", padx=24, pady=(18, 0))
-        sf.grid_columnconfigure((0, 1, 2, 3), weight=1)
+        sf.grid_columnconfigure((0, 1, 2), weight=1)
 
         self._stat_total = self._stat_card(sf, 0, "Total actividades", "0", "◉", CLR_SKY_DARK, "#dbeafe")
         self._stat_fijas = self._stat_card(sf, 1, "Fijas", "0", "∞", CLR_GREEN_DARK, CLR_GREEN_LIGHT)
         self._stat_prog  = self._stat_card(sf, 2, "Opcionales", "0", "◉", CLR_SKY_XDARK, CLR_SKY_LIGHT)
-        self._stat_part  = self._stat_card(sf, 3, "Participaciones", "0", "+", CLR_AMBER, CLR_AMBER_LIGHT)
 
     def _stat_card(self, parent, col, title, value, icon, icon_color, icon_bg):
         card = ctk.CTkFrame(parent, fg_color=CLR_WHITE, corner_radius=14,
@@ -483,8 +472,8 @@ class ActividadesScreen(ctk.CTkFrame):
         wrap.grid_rowconfigure(1, weight=1)
         wrap.grid_columnconfigure(0, weight=1)
 
-        cols = ["Nombre", "Tipo", "Fecha", "Hora", "Estado", "Participación"]
-        widths = [340, 100, 110, 90, 110, 120]
+        cols = ["Nombre", "Tipo", "Fecha", "Hora", "Estado", "Acción"]
+        widths = [280, 100, 110, 90, 110, 110]
 
         hdr = ctk.CTkFrame(wrap, fg_color=CLR_BG, corner_radius=0, height=40)
         hdr.grid(row=0, column=0, sticky="ew")
@@ -550,7 +539,6 @@ class ActividadesScreen(ctk.CTkFrame):
         total = len(rows)
         fijas = 0
         opcionales = 0
-        participaciones = 0
 
         for r in rows:
             es_fija = str(r.get("es_fija", "")).strip().lower()
@@ -558,12 +546,10 @@ class ActividadesScreen(ctk.CTkFrame):
                 fijas += 1
             else:
                 opcionales += 1
-            participaciones += int(r.get("total_registros") or 0)
 
         self._stat_total.configure(text=str(total))
         self._stat_fijas.configure(text=str(fijas))
         self._stat_prog.configure(text=str(opcionales))
-        self._stat_part.configure(text=str(participaciones))
 
     def _filter(self):
         q = self.search_var.get().strip().lower()
@@ -602,15 +588,14 @@ class ActividadesScreen(ctk.CTkFrame):
             rid = row.get("id_actividad")
             nombre = row.get("nombre", "—") or "—"
             es_fija = row.get("es_fija", "—") or "—"
-            fecha = row.get("fecha_programada", "—") or "—"
+            es_fija_check = str(row.get("es_fija", "")).strip().lower()
+            fecha_raw = row.get("fecha_programada", "") or ""
+            fecha = "Diario" if es_fija_check in ("sí", "si", "1", "true", "fija") else (fecha_raw or "—")
             hora = row.get("hora_programada", "—") or "—"
-            total_registros = int(row.get("total_registros") or 0)
+            hecho = int(row.get("hecho") or 0)
 
             tipo_txt = "Fija" if str(es_fija).strip().lower() in ("sí", "si", "1", "true", "fija") else "Opcional"
-            # ── Pasa total_registros para calcular el estado correcto ──
-            estado_txt, estado_bg, estado_fg = _estado_actividad(
-                es_fija, fecha, hora, total_registros
-            )
+            estado_txt, estado_bg, estado_fg = _estado_actividad(es_fija, fecha, hora, hecho)
 
             bg = CLR_WHITE if idx % 2 == 0 else CLR_ROW_ALT
             rf = ctk.CTkFrame(self._table, fg_color=bg, corner_radius=0, height=52)
@@ -623,7 +608,7 @@ class ActividadesScreen(ctk.CTkFrame):
             _bind(rf)
 
             datos_cols = [
-                (nombre, 340, CLR_TEXT, "w"),
+                (nombre, 280, CLR_TEXT, "w"),
                 (tipo_txt, 100, CLR_TEXT_SOFT, "w"),
                 (fecha, 110, CLR_TEXT_SOFT, "center"),
                 (hora, 90, CLR_TEXT_SOFT, "center"),
@@ -637,6 +622,7 @@ class ActividadesScreen(ctk.CTkFrame):
                 lbl.grid(row=0, column=c, padx=(14 if c == 0 else 4, 0), sticky="w")
                 _bind(lbl)
 
+            # Badge de estado
             badge = ctk.CTkFrame(rf, fg_color=estado_bg, corner_radius=6, width=90, height=26)
             badge.grid(row=0, column=4, padx=(4, 4), pady=12)
             badge.grid_propagate(False)
@@ -646,13 +632,37 @@ class ActividadesScreen(ctk.CTkFrame):
                 text_color=estado_fg
             ).place(relx=.5, rely=.5, anchor="center")
 
-            part_lbl = ctk.CTkLabel(
-                rf, text=str(total_registros),
-                font=ctk.CTkFont(size=12, weight="bold"),
-                text_color=CLR_SKY_XDARK, width=120, anchor="center"
-            )
-            part_lbl.grid(row=0, column=5, padx=(4, 12), sticky="w")
-            _bind(part_lbl)
+            # Botón acción: marcar/desmarcar hecho
+            if hecho:
+                btn_txt   = "Completada"
+                btn_fg    = CLR_BG
+                btn_hover = CLR_BG
+                btn_color = CLR_MUTED
+                btn_state = "disabled"
+            else:
+                btn_txt   = "Marcar como hecho"
+                btn_fg    = CLR_GREEN_LIGHT
+                btn_hover = "#bbf7d0"
+                btn_color = CLR_GREEN_DARK
+                btn_state = "normal"
+
+            def _toggle_hecho(r=rid, h=hecho):
+                try:
+                    from modules.actividades import marcar_hecho
+                    marcar_hecho(r, not h)
+                    self._load_data()
+                except Exception as ex:
+                    self._toast(f"Error: {ex}", error=True)
+
+            ctk.CTkButton(
+                rf, text=btn_txt,
+                fg_color=btn_fg, hover_color=btn_hover,
+                text_color=btn_color,
+                font=ctk.CTkFont(size=11, weight="bold"),
+                corner_radius=6, height=28, width=140,
+                state=btn_state,
+                command=_toggle_hecho
+            ).grid(row=0, column=5, padx=(4, 12), pady=12)
 
     # ── Selección ─────────────────────────────────────────────────────────────
     def _select(self, rid, frame):
@@ -716,8 +726,6 @@ class ActividadesScreen(ctk.CTkFrame):
         tipo_inicial = "Fija" if es_fija_val in ("sí", "si", "1", "true", "fija") else "Opcional"
 
         tipo_var = ctk.StringVar(value=tipo_inicial)
-        ctk.CTkOptionMenu(col_tipo, values=["Fija", "Opcional"], variable=tipo_var,
-                          height=35, corner_radius=8).pack(fill="x", pady=(2, 0))
 
         col_fecha = ctk.CTkFrame(row_mid, fg_color="transparent")
         col_fecha.grid(row=0, column=1, sticky="ew", padx=(5, 0))
@@ -728,6 +736,21 @@ class ActividadesScreen(ctk.CTkFrame):
         fecha_frame, fecha_var = _make_date_field(col_fecha, fecha_inicial)
         fecha_frame.configure(height=35)
         fecha_frame.pack(fill="x", pady=(2, 0))
+
+        def _on_tipo_change(*_):
+            if tipo_var.get() == "Fija":
+                col_fecha.grid_remove()
+            else:
+                col_fecha.grid()
+
+        tipo_var.trace_add("write", _on_tipo_change)
+
+        ctk.CTkOptionMenu(col_tipo, values=["Fija", "Opcional"], variable=tipo_var,
+                          height=35, corner_radius=8).pack(fill="x", pady=(2, 0))
+
+        # Aplicar estado inicial
+        if tipo_inicial == "Fija":
+            col_fecha.grid_remove()
 
         ctk.CTkLabel(form, text="Horario", font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=CLR_TEXT_SOFT).pack(anchor="w")
@@ -751,10 +774,11 @@ class ActividadesScreen(ctk.CTkFrame):
 
             try:
                 from modules.actividades import crear_actividad, actualizar_actividad
+                es_fija_sel = tipo_var.get() == "Fija"
                 datos = {
                     "nombre": nombre,
-                    "es_fija": "Fija" if tipo_var.get() == "Fija" else "No",
-                    "fecha_programada": fecha_var.get().strip(),
+                    "es_fija": "Fija" if es_fija_sel else "No",
+                    "fecha_programada": "" if es_fija_sel else fecha_var.get().strip(),
                     "hora_programada": get_hora(),
                 }
                 if edit:
@@ -788,120 +812,6 @@ class ActividadesScreen(ctk.CTkFrame):
             self._toast(f"Error: {ex}", error=True)
 
     # ── Participación ─────────────────────────────────────────────────────────
-    def _open_participacion(self):
-        win = ctk.CTkToplevel(self)
-        win.title("Registrar participación")
-        win.grab_set()
-        win.configure(fg_color=CLR_WHITE)
-        win.resizable(False, False)
-        _center(win, 520, 480)
-
-        ctk.CTkLabel(
-            win, text="+ Registrar participación",
-            font=ctk.CTkFont(size=16, weight="bold"), text_color=CLR_TEXT
-        ).pack(pady=(20, 2))
-        ctk.CTkLabel(
-            win, text="Selecciona residente, actividad y estado de participación",
-            font=ctk.CTkFont(size=11), text_color=CLR_MUTED
-        ).pack()
-
-        ctk.CTkFrame(win, fg_color=CLR_BORDER, height=1).pack(fill="x", padx=24, pady=(12, 0))
-
-        form = ctk.CTkFrame(win, fg_color="transparent")
-        form.pack(fill="both", expand=True, padx=28, pady=(16, 0))
-
-        try:
-            from modules.residentes import listar_residentes
-            res_rows = listar_residentes()
-            res_opts = {f"{r['nombre']} - {r['curp']}": r["id_residente"] for r in [dict(r) for r in res_rows]}
-        except Exception:
-            res_opts = {}
-
-        try:
-            from modules.actividades import listar_actividades
-            act_rows = listar_actividades()
-            act_opts = {f"{r['nombre']}": r["id_actividad"] for r in [dict(r) for r in act_rows]}
-        except Exception:
-            act_opts = {}
-
-        ctk.CTkLabel(form, text="Residente", font=ctk.CTkFont(size=12, weight="bold"),
-                     text_color=CLR_TEXT_SOFT).pack(anchor="w", pady=(0, 3))
-        combo_res = ctk.CTkComboBox(
-            form,
-            values=list(res_opts.keys()) if res_opts else ["Sin residentes"],
-            height=38, corner_radius=8
-        )
-        combo_res.pack(fill="x", pady=(0, 12))
-        combo_res.set("Selecciona un residente...")
-
-        ctk.CTkLabel(form, text="Actividad", font=ctk.CTkFont(size=12, weight="bold"),
-                     text_color=CLR_TEXT_SOFT).pack(anchor="w", pady=(0, 3))
-        combo_act = ctk.CTkComboBox(
-            form,
-            values=list(act_opts.keys()) if act_opts else ["Sin actividades"],
-            height=38, corner_radius=8
-        )
-        combo_act.pack(fill="x", pady=(0, 12))
-        combo_act.set("Selecciona una actividad...")
-
-        ctk.CTkLabel(form, text="Participó", font=ctk.CTkFont(size=12, weight="bold"),
-                     text_color=CLR_TEXT_SOFT).pack(anchor="w", pady=(0, 3))
-        participo_var = ctk.StringVar(value="Sí")
-        ctk.CTkOptionMenu(form, values=["Sí", "No"], variable=participo_var, height=38, corner_radius=8).pack(fill="x", pady=(0, 12))
-
-        lbl_msg = ctk.CTkLabel(win, text="", font=ctk.CTkFont(size=11), text_color=CLR_RED)
-        lbl_msg.pack(pady=(8, 0))
-
-        def _guardar():
-            res_key = combo_res.get()
-            act_key = combo_act.get()
-            res_id = res_opts.get(res_key)
-            act_id = act_opts.get(act_key)
-            fecha = date.today().isoformat()
-            hora = datetime.now().strftime("%H:%M")
-            participo = 1 if participo_var.get() == "Sí" else 0
-
-            if not res_id:
-                lbl_msg.configure(text="▲ Debes seleccionar un residente.")
-                return
-            if not act_id:
-                lbl_msg.configure(text="▲ Debes seleccionar una actividad.")
-                return
-
-            try:
-                from modules.actividades import registrar_participacion
-                registrar_participacion({
-                    "id_residente": res_id,
-                    "id_actividad": act_id,
-                    "fecha": fecha,
-                    "hora": hora,
-                    "participo": participo,
-                })
-                self._toast("Participación registrada")
-                win.destroy()
-                self._load_data()
-            except Exception as ex:
-                lbl_msg.configure(text=f"▲ {ex}")
-
-        btn_bar = ctk.CTkFrame(win, fg_color=CLR_WHITE, corner_radius=0)
-        btn_bar.pack(fill="x", pady=(14, 16))
-        btn_bar.grid_columnconfigure((0, 1), weight=1)
-
-        ctk.CTkButton(
-            btn_bar, text="Cancelar",
-            fg_color=CLR_WHITE, border_width=1, border_color=CLR_BORDER,
-            text_color=CLR_TEXT_SOFT, hover_color="#f1f5f9",
-            corner_radius=8, height=44, command=win.destroy
-        ).grid(row=0, column=0, sticky="ew", padx=(20, 8))
-
-        ctk.CTkButton(
-            btn_bar, text="Guardar participación",
-            fg_color=CLR_SKY_DARK, hover_color=CLR_SKY_XDARK,
-            text_color=CLR_WHITE, corner_radius=8, height=44,
-            font=ctk.CTkFont(size=13, weight="bold"),
-            command=_guardar
-        ).grid(row=0, column=1, sticky="ew", padx=(8, 20))
-
     # ── Eliminar ──────────────────────────────────────────────────────────────
     def _confirm_delete(self):
         if not self._selected_id:
@@ -917,8 +827,6 @@ class ActividadesScreen(ctk.CTkFrame):
         ctk.CTkLabel(dialog, text="▲", font=ctk.CTkFont(size=36)).pack(pady=(24, 4))
         ctk.CTkLabel(dialog, text="¿Eliminar esta actividad?",
                      font=ctk.CTkFont(size=15, weight="bold"), text_color=CLR_TEXT).pack()
-        ctk.CTkLabel(dialog, text="Esta acción también eliminará sus participaciones.",
-                     font=ctk.CTkFont(size=11), text_color=CLR_MUTED).pack(pady=(4, 0))
 
         row = ctk.CTkFrame(dialog, fg_color=CLR_WHITE)
         row.pack(pady=20, padx=24, fill="x")

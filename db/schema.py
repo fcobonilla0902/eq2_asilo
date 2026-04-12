@@ -79,17 +79,8 @@ CREATE TABLE IF NOT EXISTS actividades (
     nombre              TEXT,
     es_fija             TEXT,
     fecha_programada    TEXT,
-    hora_programada     TEXT
-);
-
--- Tabla: actividad_residente
-CREATE TABLE IF NOT EXISTS actividad_residente (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    id_residente    INTEGER REFERENCES residentes(id_residente),
-    id_actividad    INTEGER REFERENCES actividades(id_actividad),
-    fecha           TEXT,
-    hora            TEXT,
-    participo       INTEGER
+    hora_programada     TEXT,
+    hecho               INTEGER DEFAULT 0
 );
 
 -- Tabla: signos_vitales

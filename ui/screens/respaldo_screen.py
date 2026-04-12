@@ -360,13 +360,13 @@ class RespaldoScreen(ctk.CTkFrame):
     def _mostrar_toast(self, mensaje: str, bg: str, fg: str, duracion_ms: int = 3000):
         """Muestra una notificación flotante en la esquina superior derecha."""
         toast = ctk.CTkFrame(self, fg_color=bg, corner_radius=10,
-                             border_width=1, border_color=fg)
+                             border_width=1, border_color=fg,
+                             width=320)
         ctk.CTkLabel(toast, text=mensaje,
                      font=ctk.CTkFont(size=12, weight="bold"),
                      text_color=fg).pack(padx=16, pady=10)
 
         # Posicionar arriba a la derecha del frame
         self.update_idletasks()
-        w = 320
-        toast.place(x=self.winfo_width() - w - 20, y=80, width=w)
+        toast.place(x=self.winfo_width() - 340, y=80)
         self.after(duracion_ms, toast.destroy)
